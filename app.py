@@ -26,7 +26,7 @@ st.markdown("""
     .stApp {
         background-color: #121212;
     }
-    
+
     /* Header styling */
     .main-header {
         font-size: 2.8rem;
@@ -41,8 +41,8 @@ st.markdown("""
         margin-bottom: 2.5rem;
         font-weight: 400;
     }
-    
-    /* Tab styling - Clean and minimal */
+
+    /* Tab styling - Enhanced smooth transitions */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: transparent;
@@ -57,16 +57,50 @@ st.markdown("""
         font-size: 14px;
         font-weight: 600;
         border: none;
-        transition: all 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .stTabs [data-baseweb="tab"]:hover {
         color: #FFFFFF;
         background-color: #1A1A1A;
+        transform: translateY(-2px);
     }
     .stTabs [aria-selected="true"] {
         background-color: transparent;
         color: #FFFFFF;
-        border-bottom: 2px solid #1DB954;
+        border-bottom: 3px solid #1DB954;
+    }
+
+    /* Category cards */
+    .category-card {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        padding: 1.2rem;
+        border-radius: 12px;
+        margin: 0.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid #282828;
+        cursor: pointer;
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(29, 185, 84, 0.3);
+        border-color: #1DB954;
+    }
+    .category-name {
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .category-stats {
+        color: #B3B3B3;
+        font-size: 0.875rem;
+    }
+    .category-price {
+        color: #1DB954;
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-top: 0.5rem;
     }
     
     /* Metric styling */
@@ -150,7 +184,44 @@ st.markdown("""
     .stSlider {
         padding-top: 1rem;
     }
-    
+
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: #181818 !important;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    /* Multiselect styling */
+    .stMultiSelect [data-baseweb="tag"] {
+        background-color: #1DB954 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Improved spacing */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    /* Section headers */
+    .stMarkdown h4 {
+        margin-top: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #282828;
+    }
+
+    /* Better info boxes */
+    .stAlert > div {
+        padding: 1rem !important;
+    }
+
+    /* Smooth animations for all interactive elements */
+    button, input, select, .stDataFrame, .category-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -245,15 +316,33 @@ try:
     df = load_data()
 
     # Better navigation with tabs instead of sidebar radio
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Market Overview",
         "🔍 Competitor Analysis",
         "💵 Profit Calculator",
-        "🤖 AI Recommendations"
+        "🤖 AI Recommendations",
+        "🔄 Data Collection"
     ])
 
     with tab1:
-        st.markdown("### Market Overview - Maastricht Restaurants")
+        st.markdown("### 📊 Market Overview - Maastricht Restaurants")
+        st.markdown("Get a comprehensive view of the competitive landscape in your market.")
+
+        with st.expander("ℹ️ How to use this tab"):
+            st.markdown("""
+            **What you'll find here:**
+            - 📊 **Key Metrics**: Overview of restaurants, items, and price ranges
+            - 🏷️ **Category Grid**: Visual overview of all menu categories with average prices
+            - 📈 **Charts**: Price distribution, restaurant comparisons, and market insights
+            - 🔍 **Filters**: Narrow down by restaurant type and price range
+
+            **Tips:**
+            - Click on category cards to see which categories have the highest prices
+            - Use filters to focus on specific restaurant types or price ranges
+            - Check the price distribution to see where your items fit in the market
+            """)
+
+        st.markdown("---")
 
         # Key metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -266,6 +355,36 @@ try:
             st.metric("💰 Avg Price", f"€{df['price'].mean():.2f}")
         with col4:
             st.metric("📊 Price Range", f"€{df['price'].min():.2f} - €{df['price'].max():.2f}")
+
+        st.markdown("---")
+
+        # Category Overview - Show all categories at a glance
+        st.markdown("#### 🏷️ Categories Overview")
+        st.markdown("Quick view of all menu categories and their average prices")
+
+        category_stats_for_grid = df.groupby('category').agg({
+            'price': ['mean', 'count']
+        }).round(2)
+        category_stats_for_grid.columns = ['avg_price', 'count']
+        category_stats_for_grid = category_stats_for_grid.reset_index().sort_values('avg_price', ascending=False)
+
+        # Display categories in a grid layout
+        cols_per_row = 4
+        categories_list = category_stats_for_grid.to_dict('records')
+
+        for i in range(0, len(categories_list), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j, col in enumerate(cols):
+                if i + j < len(categories_list):
+                    cat = categories_list[i + j]
+                    with col:
+                        st.markdown(f"""
+                        <div class="category-card">
+                            <div class="category-name">{cat['category']}</div>
+                            <div class="category-stats">{int(cat['count'])} items</div>
+                            <div class="category-price">€{cat['avg_price']:.2f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -373,16 +492,40 @@ try:
         st.dataframe(category_stats, use_container_width=True)
 
     with tab2:
-        st.markdown("### Competitor Analysis")
+        st.markdown("### 🔍 Competitor Analysis")
+        st.markdown("Analyze competitor pricing by category. Select one or more categories to compare.")
 
-        # Select category to analyze
-        categories = ['All'] + sorted(df['category'].unique().tolist())
-        selected_category = st.selectbox("Filter by Category", categories, key="comp_category")
+        with st.expander("ℹ️ How to use this tab"):
+            st.markdown("""
+            **What you'll find here:**
+            - 🏷️ **Category Selection**: Choose multiple categories to compare
+            - 📊 **Statistics**: Key metrics for selected categories
+            - 📋 **Detailed Table**: All items with prices sorted high to low
+            - 📦 **Box Plots**: Visual comparison of price ranges by restaurant
 
-        if selected_category != 'All':
-            filtered_df = df[df['category'] == selected_category]
+            **Tips:**
+            - Select multiple categories to compare pricing across different item types
+            - Check the detailed table to see specific competitor items and prices
+            - Use box plots to identify price outliers and positioning opportunities
+            """)
+
+        st.markdown("---")
+
+        # Multi-select for categories
+        all_categories = sorted(df['category'].unique().tolist())
+        selected_categories = st.multiselect(
+            "🏷️ Select Categories to Analyze",
+            all_categories,
+            default=[all_categories[0]] if all_categories else [],
+            key="comp_category",
+            help="Choose one or more categories to see detailed pricing analysis"
+        )
+
+        if selected_categories:
+            filtered_df = df[df['category'].isin(selected_categories)]
         else:
             filtered_df = df
+            st.info("💡 Select at least one category to view specific analysis, or leave empty to see all items.")
 
         # Show stats
         col1, col2, col3 = st.columns(3)
@@ -411,21 +554,61 @@ try:
 
     with tab3:
         st.markdown("### 💵 Profit Margin Calculator")
-        st.markdown("Calculate your profit margins and compare with competitor pricing")
+        st.markdown("Calculate your profit margins and compare with competitor pricing to optimize your menu.")
+
+        with st.expander("ℹ️ How to use this tab"):
+            st.markdown("""
+            **What you'll find here:**
+            - 📝 **Your Item Inputs**: Enter your item details (name, price, costs)
+            - 🔍 **Category Comparison**: Compare against competitor averages
+            - 💰 **Profit Analysis**: See margins and positioning vs market
+            - 📊 **Recommendations**: Get instant feedback on your pricing
+            - 🔮 **What-If Analysis**: See how price changes affect monthly profit
+
+            **Tips:**
+            - Be accurate with ingredient costs for reliable margin calculations
+            - Compare with similar categories for relevant insights
+            - Use the what-if slider to model different sales volumes
+            - Watch for opportunities to increase prices while staying competitive
+            """)
 
         st.markdown("---")
 
         col1, col2 = st.columns([1, 1])
 
         with col1:
-            st.markdown("#### Your Menu Item")
-            item_name = st.text_input("Item Name", "Cappuccino", key="calc_item")
-            your_price = st.number_input("Your Selling Price (€)", min_value=0.0, value=3.50, step=0.10, key="calc_price")
-            ingredient_cost = st.number_input("Ingredient Cost (€)", min_value=0.0, value=0.80, step=0.10, key="calc_cost")
+            st.markdown("#### 📝 Your Menu Item")
+            item_name = st.text_input(
+                "Item Name",
+                "Cappuccino",
+                key="calc_item",
+                help="Enter the name of your menu item"
+            )
+            your_price = st.number_input(
+                "Your Selling Price (€)",
+                min_value=0.0,
+                value=3.50,
+                step=0.10,
+                key="calc_price",
+                help="The price you charge customers"
+            )
+            ingredient_cost = st.number_input(
+                "Ingredient Cost (€)",
+                min_value=0.0,
+                value=0.80,
+                step=0.10,
+                key="calc_cost",
+                help="Total cost of ingredients per item"
+            )
 
         with col2:
-            st.markdown("#### Compare with Category")
-            compare_category = st.selectbox("Category", sorted(df['category'].unique()), key="calc_category")
+            st.markdown("#### 🔍 Compare with Category")
+            compare_category = st.selectbox(
+                "Category",
+                sorted(df['category'].unique()),
+                key="calc_category",
+                help="Select a category to compare against competitor pricing"
+            )
 
             competitor_items = df[df['category'] == compare_category]
             if len(competitor_items) > 0:
@@ -522,25 +705,28 @@ try:
 
     with tab4:
         st.markdown("### 🤖 AI-Powered Pricing Recommendations")
+        st.markdown("Get personalized pricing insights powered by Claude AI based on your costs and competitor data.")
 
         client = get_claude_client()
 
         if not client:
             st.warning("⚠️ Claude API key not configured. Set ANTHROPIC_API_KEY environment variable to enable AI recommendations.")
-            st.markdown("""
-            **To enable AI recommendations:**
-            
-            1. Get your API key from [console.anthropic.com](https://console.anthropic.com)
-            2. Set environment variable:
-               ```bash
-               # Windows (PowerShell)
-               $env:ANTHROPIC_API_KEY="your-api-key-here"
-               
-               # Mac/Linux
-               export ANTHROPIC_API_KEY="your-api-key-here"
-               ```
-            3. Restart Streamlit
-            """)
+
+            with st.expander("📖 How to enable AI recommendations"):
+                st.markdown("""
+                **Setup Instructions:**
+
+                1. Get your API key from [console.anthropic.com](https://console.anthropic.com)
+                2. Set environment variable:
+                   ```bash
+                   # Windows (PowerShell)
+                   $env:ANTHROPIC_API_KEY="your-api-key-here"
+
+                   # Mac/Linux
+                   export ANTHROPIC_API_KEY="your-api-key-here"
+                   ```
+                3. Restart Streamlit
+                """)
         else:
             st.success("✅ AI recommendations enabled!")
 
@@ -549,16 +735,46 @@ try:
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                ai_item_name = st.text_input("Item Name", "Cappuccino", key="ai_item")
-                ai_your_price = st.number_input("Your Selling Price (€)", min_value=0.0, value=3.50, step=0.10, key="ai_price")
-                ai_ingredient_cost = st.number_input("Ingredient Cost (€)", min_value=0.0, value=0.80, step=0.10, key="ai_cost")
+                st.markdown("#### 📝 Your Item Details")
+                ai_item_name = st.text_input(
+                    "Item Name",
+                    "Cappuccino",
+                    key="ai_item",
+                    help="The menu item you want pricing recommendations for"
+                )
+                ai_your_price = st.number_input(
+                    "Your Selling Price (€)",
+                    min_value=0.0,
+                    value=3.50,
+                    step=0.10,
+                    key="ai_price",
+                    help="Your current or proposed selling price"
+                )
+                ai_ingredient_cost = st.number_input(
+                    "Ingredient Cost (€)",
+                    min_value=0.0,
+                    value=0.80,
+                    step=0.10,
+                    key="ai_cost",
+                    help="Total cost to make this item"
+                )
 
             with col2:
-                ai_compare_category = st.selectbox("Category", sorted(df['category'].unique()), key="ai_category")
+                st.markdown("#### 🔍 Market Comparison")
+                ai_compare_category = st.selectbox(
+                    "Category",
+                    sorted(df['category'].unique()),
+                    key="ai_category",
+                    help="Category to compare against for AI analysis"
+                )
                 ai_competitor_items = df[df['category'] == ai_compare_category]
 
-            if st.button("🤖 Generate AI Recommendations", type="primary"):
-                with st.spinner("Analyzing your pricing with Claude AI..."):
+                if len(ai_competitor_items) > 0:
+                    st.metric("Competitor Items", len(ai_competitor_items))
+                    st.metric("Market Average", f"€{ai_competitor_items['price'].mean():.2f}")
+
+            if st.button("🤖 Generate AI Recommendations", type="primary", help="Click to get AI-powered pricing insights"):
+                with st.spinner("🧠 Analyzing your pricing with Claude AI..."):
                     recommendations = get_ai_recommendations(
                         ai_item_name,
                         ai_your_price,
@@ -569,12 +785,118 @@ try:
 
                     if recommendations:
                         st.markdown("---")
-                        st.markdown("### 💡 AI Analysis")
+                        st.markdown("### 💡 AI Analysis & Recommendations")
                         st.markdown(recommendations)
 
+    with tab5:
+        st.markdown("### 🔄 Data Collection")
+        st.markdown("Collect competitor pricing data from Maastricht restaurants. All inputs are managed here - no command line needed!")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            st.markdown("#### 📍 Data Source Configuration")
+
+            city = st.text_input(
+                "City",
+                "Maastricht",
+                key="scraper_city",
+                help="City to collect restaurant data from"
+            )
+
+            num_restaurants = st.number_input(
+                "Number of Restaurants",
+                min_value=1,
+                max_value=50,
+                value=10,
+                step=1,
+                key="scraper_count",
+                help="How many restaurants to scrape data from"
+            )
+
+            scraper_type = st.selectbox(
+                "Data Source",
+                ["Thuisbezorgd.nl", "Generic Websites", "Both"],
+                key="scraper_type",
+                help="Choose which sources to collect data from"
+            )
+
+        with col2:
+            st.markdown("#### 📊 Current Data Status")
+
+            try:
+                with open('scraped_menus.json', 'r', encoding='utf-8') as f:
+                    current_data = json.load(f)
+                    st.metric("Restaurants", len(current_data))
+                    total_items = sum(len(r.get('menu_items', [])) for r in current_data)
+                    st.metric("Menu Items", total_items)
+                    st.success("✅ Data loaded")
+            except FileNotFoundError:
+                st.warning("⚠️ No data yet")
+                st.info("Click 'Start Collection' to gather data")
+
+        st.markdown("---")
+
+        st.markdown("#### 🚀 Start Data Collection")
+
+        if st.button("🔄 Start Collection", type="primary", key="start_scraper"):
+            st.info("🔄 Data collection feature coming soon!")
+            st.markdown("""
+            **For now, please use the command line:**
+
+            ```bash
+            python scraper.py
+            ```
+
+            This will collect competitor pricing data and save it to `scraped_menus.json`.
+
+            **Note:** This feature will be fully integrated in the next update, allowing you to:
+            - ✅ Configure scraping parameters from the UI
+            - ✅ Monitor progress in real-time
+            - ✅ View collection logs
+            - ✅ Refresh data with one click
+            """)
+
+        st.markdown("---")
+
+        st.markdown("#### ℹ️ About Data Collection")
+
+        with st.expander("How does data collection work?"):
+            st.markdown("""
+            **Data Sources:**
+            - **Thuisbezorgd.nl**: Popular food delivery platform in the Netherlands
+            - **Generic Websites**: Direct restaurant websites using AI-powered scraping
+
+            **What data is collected:**
+            - Restaurant names and types
+            - Menu item names and descriptions
+            - Prices
+            - Categories (automatically classified)
+
+            **Privacy & Ethics:**
+            - Only publicly available pricing data is collected
+            - No personal information is stored
+            - Data is used for competitive analysis only
+            """)
+
+        with st.expander("Troubleshooting"):
+            st.markdown("""
+            **Common Issues:**
+
+            1. **No data found**: Run `python scraper.py` from command line
+            2. **Old data**: Re-run scraper to refresh
+            3. **Missing restaurants**: Increase the number of restaurants to scrape
+
+            **File Locations:**
+            - Data: `scraped_menus.json`
+            - Scrapers: `scrapers/` directory
+            """)
+
 except FileNotFoundError:
-    st.error("❌ No data found! Please run the scraper first to generate scraped_menus.json")
-    st.info("Run: `python scraper.py` to collect competitor data")
+    st.error("❌ No data found! Please use the Data Collection tab to gather competitor data.")
+    st.info("💡 Go to the '🔄 Data Collection' tab to start collecting data, or run `python scraper.py` from command line.")
 
 # Footer
 st.markdown("---")
