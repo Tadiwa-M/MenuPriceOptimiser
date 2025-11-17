@@ -167,9 +167,14 @@ def load_data():
     # Convert to DataFrame
     rows = []
     for restaurant in data:
+        restaurant_types = ', '.join(restaurant.get('restaurant_types', ['restaurant']))
+        price_range = restaurant.get('price_range', 'unknown')
+
         for item in restaurant['menu_items']:
             rows.append({
                 'restaurant': restaurant['restaurant_name'],
+                'restaurant_types': restaurant_types,
+                'price_range': price_range,
                 'item_name': item['name'],
                 'category': item['category'],
                 'price': item['price']
@@ -264,12 +269,53 @@ try:
 
         st.markdown("---")
 
+        # Restaurant type and price range filters
+        col1, col2 = st.columns(2)
+        with col1:
+            # Restaurant types filter
+            all_types = set()
+            for types_str in df['restaurant_types'].unique():
+                all_types.update([t.strip() for t in types_str.split(',')])
+            all_types = sorted(list(all_types))
+
+            selected_type = st.selectbox(
+                "Filter by Restaurant Type",
+                ['All'] + all_types,
+                key="overview_type_filter"
+            )
+
+        with col2:
+            # Price range filter
+            price_ranges = ['All'] + sorted(df['price_range'].unique().tolist())
+            selected_price_range = st.selectbox(
+                "Filter by Price Range",
+                price_ranges,
+                key="overview_price_filter"
+            )
+
+        # Apply filters
+        filtered_overview_df = df.copy()
+        if selected_type != 'All':
+            filtered_overview_df = filtered_overview_df[
+                filtered_overview_df['restaurant_types'].str.contains(selected_type, case=False, na=False)
+            ]
+        if selected_price_range != 'All':
+            filtered_overview_df = filtered_overview_df[
+                filtered_overview_df['price_range'] == selected_price_range
+            ]
+
+        if len(filtered_overview_df) == 0:
+            st.warning("No restaurants match the selected filters")
+            filtered_overview_df = df  # Fallback to show all data
+
+        st.markdown("---")
+
         # Price distribution
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("#### Price Distribution")
-            fig = px.histogram(df, x='price', nbins=15,
+            fig = px.histogram(filtered_overview_df, x='price', nbins=15,
                              labels={'price': 'Price (€)', 'count': 'Number of Items'},
                              color_discrete_sequence=['#667eea'])
             fig.update_layout(showlegend=False, height=400)
@@ -277,7 +323,7 @@ try:
 
         with col2:
             st.markdown("#### Average Price by Restaurant")
-            restaurant_avg = df.groupby('restaurant')['price'].mean().sort_values(ascending=False)
+            restaurant_avg = filtered_overview_df.groupby('restaurant')['price'].mean().sort_values(ascending=False)
             fig = px.bar(x=restaurant_avg.values, y=restaurant_avg.index,
                         orientation='h',
                         labels={'x': 'Average Price (€)', 'y': ''},
@@ -286,9 +332,40 @@ try:
             fig.update_layout(showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
+        # Restaurant Type Distribution
+        st.markdown("#### Restaurant Type Distribution")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Count by type
+            type_counts = {}
+            for types_str in df['restaurant_types'].unique():
+                for t in types_str.split(','):
+                    t = t.strip()
+                    type_counts[t] = type_counts.get(t, 0) + 1
+
+            type_df = pd.DataFrame(list(type_counts.items()), columns=['Type', 'Count'])
+            type_df = type_df.sort_values('Count', ascending=False)
+
+            fig = px.bar(type_df, x='Type', y='Count',
+                        labels={'Type': 'Restaurant Type', 'Count': 'Number of Restaurants'},
+                        color='Count',
+                        color_continuous_scale='Teal')
+            fig.update_layout(showlegend=False, height=350)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            # Price range distribution
+            price_range_counts = df.groupby('price_range')['restaurant'].nunique()
+            fig = px.pie(values=price_range_counts.values, names=price_range_counts.index,
+                        title='Restaurants by Price Range',
+                        color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+
         # Category breakdown
         st.markdown("#### Prices by Category")
-        category_stats = df.groupby('category').agg({
+        category_stats = filtered_overview_df.groupby('category').agg({
             'price': ['mean', 'min', 'max', 'count']
         }).round(2)
         category_stats.columns = ['Avg Price (€)', 'Min Price (€)', 'Max Price (€)', 'Items']

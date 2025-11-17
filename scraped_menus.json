@@ -1,0 +1,315 @@
+[
+  {
+    "restaurant_name": "Pitology",
+    "url": "https://www.thuisbezorgd.nl/en/menu/pitology",
+    "scraped_at": "2025-11-04T21:40:35.975037",
+    "menu_items": [
+      {
+        "name": "Pita gyros",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita chicken",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita chicken gyros",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita bifteki",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita souvlaki",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita Pancetta",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      },
+      {
+        "name": "Pita Greek sausage",
+        "category": "Greek pitas",
+        "price": 10.6,
+        "price_raw": "€ 10,60",
+        "description": ""
+      }
+    ],
+    "total_items": 7
+  },
+  {
+    "restaurant_name": "Tasty Thai",
+    "url": "https://www.thuisbezorgd.nl/en/menu/tasty-thai-maastricht",
+    "scraped_at": "2025-11-04T21:40:58.145842",
+    "menu_items": [
+      {
+        "name": "Mini spring rolls",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Vegetarian spring rolls",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Thai Fish Cakes",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Thai Chicken Satay",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Mini Bangkok Snacks",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Thai chicken wings",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Crispy Pork Belly",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      },
+      {
+        "name": "Chicken Samosa",
+        "category": "Spring rolls and snacks",
+        "price": 12.5,
+        "price_raw": "€ 12,50",
+        "description": ""
+      }
+    ],
+    "total_items": 8
+  },
+  {
+    "restaurant_name": "BABS Burritos",
+    "url": "https://www.thuisbezorgd.nl/en/menu/babs-burritos",
+    "scraped_at": "2025-11-04T21:41:15.811637",
+    "menu_items": [],
+    "total_items": 0
+  },
+  {
+    "restaurant_name": "Order food and more",
+    "url": "https://www.thuisbezorgd.nl/en/menu/new-china-garden",
+    "scraped_at": "2025-11-04T21:41:38.703976",
+    "menu_items": [],
+    "total_items": 0
+  },
+  {
+    "restaurant_name": "Chinees restaurant Chi",
+    "url": "https://www.thuisbezorgd.nl/en/menu/chinees-restaurant-chi",
+    "scraped_at": "2025-11-04T21:41:57.754086",
+    "menu_items": [
+      {
+        "name": "Monthly Menu A",
+        "category": "Monthly Menus",
+        "price": 28.4,
+        "price_raw": "from € 28,40",
+        "description": ""
+      },
+      {
+        "name": "Monthly Menu B",
+        "category": "Monthly Menus",
+        "price": 28.4,
+        "price_raw": "from € 28,40",
+        "description": ""
+      },
+      {
+        "name": "Chinese rice table for 2 persons",
+        "category": "Rice Tables",
+        "price": 28.4,
+        "price_raw": "from € 28,40",
+        "description": ""
+      },
+      {
+        "name": "Chinese Indonesian rice table for 2 persons",
+        "category": "Rice Tables",
+        "price": 28.4,
+        "price_raw": "from € 28,40",
+        "description": ""
+      },
+      {
+        "name": "Indian rice table for 1 person",
+        "category": "Rice Tables",
+        "price": 28.4,
+        "price_raw": "from € 28,40",
+        "description": ""
+      }
+    ],
+    "total_items": 5
+  },
+  {
+    "restaurant_name": "Futago Food House",
+    "url": "https://www.thuisbezorgd.nl/en/menu/futago-food-house",
+    "scraped_at": "2025-11-04T21:42:33.930051",
+    "menu_items": [
+      {
+        "name": "I do not want to receive chopsticks",
+        "category": "Seeds Against Waste",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "I do not want to receive soy sauce",
+        "category": "Seeds Against Waste",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "I do not want to receive ginger",
+        "category": "Seeds Against Waste",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "I do not want to receive wasabi",
+        "category": "Seeds Against Waste",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "Small maki box",
+        "category": "Boxes",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "Salmon box",
+        "category": "Boxes",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      },
+      {
+        "name": "Tuna box",
+        "category": "Boxes",
+        "price": 0.0,
+        "price_raw": "€ 0,00",
+        "description": ""
+      }
+    ],
+    "total_items": 7
+  },
+  {
+    "restaurant_name": "Pasta Corner",
+    "url": "https://www.thuisbezorgd.nl/en/menu/pasta-corner",
+    "scraped_at": "2025-11-04T21:42:57.216798",
+    "menu_items": [],
+    "total_items": 0
+  },
+  {
+    "restaurant_name": "Seven Spices Maastricht",
+    "url": "https://www.thuisbezorgd.nl/en/menu/seven-spices-maastricht",
+    "scraped_at": "2025-11-04T21:43:21.139697",
+    "menu_items": [
+      {
+        "name": "Onion bhaji",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Samosas",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Cauliflower Fritter",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Paneer tikka",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Hara bhara kebab",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Mushroom Tandoori",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      },
+      {
+        "name": "Vegetable platter (2-3 persons)",
+        "category": "Starters",
+        "price": 20.95,
+        "price_raw": "€ 20,95",
+        "description": ""
+      }
+    ],
+    "total_items": 7
+  },
+  {
+    "restaurant_name": "Order from 158 places",
+    "url": "https://www.thuisbezorgd.nl/en/menu/new-york-pizza-maastricht-brusselse-poort",
+    "scraped_at": "2025-11-04T21:44:37.059459",
+    "menu_items": [],
+    "total_items": 0
+  },
+  {
+    "restaurant_name": "Unknown Restaurant",
+    "url": "https://www.thuisbezorgd.nl/en/menu/patty-n-bun",
+    "scraped_at": "2025-11-04T21:48:09.679400",
+    "menu_items": [],
+    "total_items": 0
+  }
+]
