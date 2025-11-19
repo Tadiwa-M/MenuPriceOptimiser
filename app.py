@@ -424,8 +424,11 @@ try:
 
         st.markdown("---")
 
-        # Restaurant type and price range filters
-        col1, col2 = st.columns(2)
+        # Restaurant type and price range filters with better UX
+        st.markdown("### 🔍 Filter Market Data")
+        st.markdown("Filter the competitive landscape to focus on your restaurant type and price segment")
+
+        col1, col2, col3 = st.columns(3)
         with col1:
             # Restaurant types filter
             all_types = set()
@@ -434,23 +437,34 @@ try:
             all_types = sorted(list(all_types))
 
             selected_type = st.selectbox(
-                "Filter by Restaurant Type",
-                ['All'] + all_types,
-                key="overview_type_filter"
+                "🍽️ Restaurant Type",
+                ['All Types'] + all_types,
+                key="overview_type_filter",
+                help="Filter to see only specific restaurant types (e.g., Asian, Pizza, Burgers)"
             )
 
         with col2:
             # Price range filter
             price_ranges = ['All'] + sorted(df['price_range'].unique().tolist())
             selected_price_range = st.selectbox(
-                "Filter by Price Range",
+                "💰 Price Range",
                 price_ranges,
-                key="overview_price_filter"
+                key="overview_price_filter",
+                help="Filter by price segment (budget, moderate, premium, luxury)"
             )
+
+        with col3:
+            # Show filtering stats
+            if selected_type != 'All Types' or selected_price_range != 'All':
+                st.markdown("#### Active Filters")
+                if selected_type != 'All Types':
+                    st.success(f"✓ {selected_type}")
+                if selected_price_range != 'All':
+                    st.success(f"✓ {selected_price_range}")
 
         # Apply filters
         filtered_overview_df = df.copy()
-        if selected_type != 'All':
+        if selected_type != 'All Types':
             filtered_overview_df = filtered_overview_df[
                 filtered_overview_df['restaurant_types'].str.contains(selected_type, case=False, na=False)
             ]
@@ -460,8 +474,115 @@ try:
             ]
 
         if len(filtered_overview_df) == 0:
-            st.warning("No restaurants match the selected filters")
+            st.warning(f"⚠️ No restaurants match your filters ({selected_type}, {selected_price_range}). Showing all data instead.")
             filtered_overview_df = df  # Fallback to show all data
+        else:
+            # Show filtered stats
+            filtered_restaurants = filtered_overview_df['restaurant'].nunique()
+            total_restaurants = df['restaurant'].nunique()
+            if selected_type != 'All Types' or selected_price_range != 'All':
+                st.info(f"📊 Showing **{filtered_restaurants}** of **{total_restaurants}** restaurants matching your filters")
+
+        # Show restaurant type breakdown
+        st.markdown("---")
+        st.markdown("### 📊 Restaurant Type Breakdown")
+        st.markdown("See the competitive landscape by restaurant type in your market")
+
+        # Calculate restaurant type stats
+        type_breakdown = []
+        for types_str in df['restaurant_types'].unique():
+            for rtype in types_str.split(','):
+                rtype = rtype.strip()
+                type_df = df[df['restaurant_types'].str.contains(rtype, case=False, na=False)]
+                type_restaurants = type_df['restaurant'].nunique()
+                type_items = len(type_df)
+                type_avg_price = type_df['price'].mean()
+                type_breakdown.append({
+                    'Type': rtype.title(),
+                    'Restaurants': type_restaurants,
+                    'Menu Items': type_items,
+                    'Avg Price': type_avg_price
+                })
+
+        # Remove duplicates and sort
+        type_breakdown_df = pd.DataFrame(type_breakdown).drop_duplicates('Type').sort_values('Restaurants', ascending=False)
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Bar chart of restaurant types
+            fig = px.bar(
+                type_breakdown_df,
+                x='Type',
+                y='Restaurants',
+                title='Number of Restaurants by Type in Maastricht',
+                labels={'Restaurants': 'Number of Restaurants', 'Type': 'Restaurant Type'},
+                color='Avg Price',
+                color_continuous_scale='RdYlGn_r',
+                text='Restaurants'
+            )
+            fig.update_traces(textposition='outside')
+            fig.update_layout(showlegend=True, height=400, xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.markdown("#### 🎯 Your Competitive Set")
+            st.markdown("Filter by your restaurant type to see:")
+            st.markdown("- **Number of competitors**")
+            st.markdown("- **Average pricing**")
+            st.markdown("- **Popular menu items**")
+            st.markdown("- **Price positioning**")
+
+            st.markdown("---")
+            st.markdown("**Example: Asian Restaurants**")
+            asian_df = df[df['restaurant_types'].str.contains('asian', case=False, na=False)]
+            if len(asian_df) > 0:
+                asian_restaurants = asian_df['restaurant'].nunique()
+                asian_avg = asian_df['price'].mean()
+                st.metric("Asian Restaurants", asian_restaurants)
+                st.metric("Avg Price", f"€{asian_avg:.2f}")
+            else:
+                st.info("Select restaurant type to see competitive insights")
+
+        # Show all restaurants table
+        st.markdown("---")
+        st.markdown("### 🏪 All Restaurants in Dataset")
+        st.markdown("Complete list of restaurants with pricing data")
+
+        # Create restaurant summary
+        restaurant_summary = df.groupby('restaurant').agg({
+            'item_name': 'count',
+            'price': ['mean', 'min', 'max'],
+            'restaurant_types': 'first',
+            'price_range': 'first'
+        }).reset_index()
+
+        restaurant_summary.columns = ['Restaurant', 'Menu Items', 'Avg Price', 'Min Price', 'Max Price', 'Types', 'Price Range']
+        restaurant_summary = restaurant_summary.sort_values('Restaurant')
+
+        # Format pricing columns
+        restaurant_summary['Avg Price'] = restaurant_summary['Avg Price'].apply(lambda x: f"€{x:.2f}")
+        restaurant_summary['Min Price'] = restaurant_summary['Min Price'].apply(lambda x: f"€{x:.2f}")
+        restaurant_summary['Max Price'] = restaurant_summary['Max Price'].apply(lambda x: f"€{x:.2f}")
+
+        # Display table
+        st.dataframe(
+            restaurant_summary,
+            use_container_width=True,
+            hide_index=True,
+            height=min(len(restaurant_summary) * 40 + 50, 400)  # Dynamic height, max 400px
+        )
+
+        # Data quality insights
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📍 Total Restaurants", len(restaurant_summary))
+        with col2:
+            total_items = df['item_name'].count()
+            st.metric("📋 Total Menu Items", total_items)
+        with col3:
+            avg_items_per_restaurant = total_items / len(restaurant_summary)
+            st.metric("📊 Avg Items/Restaurant", f"{avg_items_per_restaurant:.0f}")
 
         st.markdown("---")
 
@@ -2120,34 +2241,199 @@ try:
 
         st.markdown("---")
 
+        # Custom cafe URLs section
+        st.markdown("### ☕ Add Custom Cafe/Restaurant Websites")
+        st.markdown("Scrape menus from individual cafe websites that aren't on Thuisbezorgd")
+
+        with st.expander("➕ Add Custom Cafe URLs", expanded=False):
+            st.markdown("""
+            **Supported Website Types:**
+            - ✅ Squarespace cafes (e.g., mickeybrowns.nl)
+            - ✅ WordPress restaurants
+            - ✅ Custom websites with menu pages
+            - ✅ Any site with structured menu data
+
+            **What Gets Scraped:**
+            - Menu item names
+            - Prices (if available)
+            - Categories
+            - Descriptions
+            """)
+
+            # Initialize session state for custom URLs
+            if 'custom_urls' not in st.session_state:
+                st.session_state.custom_urls = []
+
+            # Input for new URL
+            col1, col2, col3 = st.columns([3, 2, 1])
+
+            with col1:
+                new_url = st.text_input(
+                    "Website URL",
+                    placeholder="https://example.com/menu",
+                    key="new_cafe_url",
+                    help="Full URL to the cafe's menu page"
+                )
+
+            with col2:
+                new_name = st.text_input(
+                    "Cafe Name",
+                    placeholder="Mickey Browns",
+                    key="new_cafe_name",
+                    help="Name of the cafe/restaurant"
+                )
+
+            with col3:
+                st.markdown("&nbsp;")  # Spacing
+                if st.button("➕ Add", type="secondary"):
+                    if new_url and new_name:
+                        st.session_state.custom_urls.append({
+                            'url': new_url,
+                            'name': new_name
+                        })
+                        st.success(f"Added {new_name}!")
+                        st.rerun()
+                    else:
+                        st.error("Please enter both URL and name")
+
+            # Display added URLs
+            if st.session_state.custom_urls:
+                st.markdown("---")
+                st.markdown("#### 📋 Custom URLs to Scrape")
+
+                for idx, cafe in enumerate(st.session_state.custom_urls):
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        st.text(cafe['url'])
+                    with col2:
+                        st.text(cafe['name'])
+                    with col3:
+                        if st.button("❌", key=f"remove_cafe_{idx}"):
+                            st.session_state.custom_urls.pop(idx)
+                            st.rerun()
+
+                # Scrape custom URLs button
+                st.markdown("---")
+                if st.button("🚀 Scrape Custom Cafes", type="primary", key="scrape_custom"):
+                    st.session_state.scraping_in_progress = True
+
+                    progress_bar_custom = st.progress(0)
+                    status_text_custom = st.empty()
+
+                    try:
+                        status_text_custom.text("🚀 Starting custom cafe scraper...")
+                        manager = ScraperManager(headless=True)
+
+                        total_urls = len(st.session_state.custom_urls)
+
+                        for idx, cafe in enumerate(st.session_state.custom_urls):
+                            progress = (idx / total_urls) * 100
+                            progress_bar_custom.progress(progress / 100)
+                            status_text_custom.text(f"Scraping {cafe['name']} ({idx + 1}/{total_urls})...")
+
+                            result = manager.scrape_url(cafe['url'], restaurant_name=cafe['name'])
+
+                            if not result:
+                                st.warning(f"⚠️ Could not scrape {cafe['name']} - site structure may not be compatible")
+
+                        # Load existing data and merge
+                        try:
+                            with open('scraped_menus.json', 'r', encoding='utf-8') as f:
+                                existing_data = json.load(f)
+                        except FileNotFoundError:
+                            existing_data = []
+
+                        # Merge with existing data (avoid duplicates by URL)
+                        existing_urls = {r['url'] for r in existing_data}
+                        for restaurant in manager.data:
+                            if restaurant['url'] not in existing_urls:
+                                existing_data.append(restaurant)
+
+                        # Save combined data
+                        with open('scraped_menus.json', 'w', encoding='utf-8') as f:
+                            json.dump(existing_data, f, indent=2, ensure_ascii=False)
+
+                        manager.close_all()
+
+                        progress_bar_custom.progress(100)
+                        status_text_custom.text("✅ Complete!")
+
+                        st.success(f"""
+                        ✅ **Custom Cafe Scraping Complete!**
+
+                        - **Cafes scraped:** {len(manager.data)}
+                        - **Total items extracted:** {sum(r.get('total_items', 0) for r in manager.data)}
+                        - **Data merged with existing data**
+
+                        Go to Market Overview to see your cafe data alongside Thuisbezorgd restaurants!
+                        """)
+
+                        # Clear the URLs after successful scrape
+                        st.session_state.custom_urls = []
+
+                    except Exception as e:
+                        st.error(f"❌ **Error scraping custom cafes:**\n\n{str(e)}")
+
+                    finally:
+                        st.session_state.scraping_in_progress = False
+
+            else:
+                st.info("💡 Add cafe URLs above to start scraping individual websites")
+
+        st.markdown("---")
+
         st.markdown("#### ℹ️ About Data Collection")
 
         with st.expander("How does data collection work?"):
             st.markdown("""
-            **Data Sources:**
-            - **Thuisbezorgd.nl**: Popular food delivery platform in the Netherlands
+            **Multi-Source Data Collection:**
+
+            **1. Thuisbezorgd.nl Platform Scraping:**
             - Scrapes ALL restaurants in the selected city (not just a sample)
             - Uses intelligent scrolling to load all available restaurants
+            - Typically finds 100-300+ restaurants per city
+            - Automated restaurant type classification
 
-            **What data is collected:**
+            **2. Custom Cafe/Restaurant Websites:**
+            - **Squarespace Sites** - Specialized scraper for Squarespace-based cafes
+            - **WordPress Sites** - Generic scraper handles WordPress menus
+            - **Custom Sites** - Adaptive scraping for any menu structure
+            - **Examples**: mickeybrowns.nl, local cafe websites, independent restaurants
+
+            **What Data is Collected:**
             - Restaurant names and types (automatically classified)
             - Menu item names and descriptions
-            - Prices (cleaned and standardized)
-            - Categories (burgers, pizza, asian, etc.)
+            - Prices (cleaned and standardized to €)
+            - Categories (burgers, pizza, asian, drinks, etc.)
             - Price range classification (budget, moderate, premium, luxury)
 
+            **Intelligent Scraping Technology:**
+            - **Multiple scraper engines** - Thuisbezorgd, Squarespace, Generic
+            - **Automatic routing** - System picks the best scraper for each URL
+            - **Fallback strategies** - Multiple extraction methods per site
+            - **Pattern recognition** - Finds menu items even on unstructured sites
+            - **Text-based extraction** - Works even without structured HTML
+
             **Technical Details:**
-            - Uses Selenium WebDriver for reliable scraping
-            - Scrolls through infinite-scroll pages to find all restaurants
-            - Handles cookie popups and closed restaurant notices
-            - Extracts structured menu data with multiple fallback selectors
-            - Applies smart classification based on menu items and names
+            - Uses Selenium WebDriver for JavaScript-heavy sites
+            - Handles infinite-scroll pages automatically
+            - Cookie popup and overlay management
+            - Multiple CSS selector strategies
+            - Regular expression pattern matching for prices
+            - Smart category detection
 
             **Privacy & Ethics:**
             - Only publicly available pricing data is collected
             - No personal information is stored
             - Data is used for competitive analysis only
-            - Respects website structure and adds delays between requests
+            - Respects robots.txt and adds delays between requests
+            - No aggressive scraping or server overload
+
+            **Data Merging:**
+            - Thuisbezorgd data + Custom cafe data = Complete market view
+            - Duplicates automatically removed by URL
+            - All sources appear together in Market Overview
+            - Filter by type to see specific competitive sets
             """)
 
         with st.expander("Troubleshooting"):
