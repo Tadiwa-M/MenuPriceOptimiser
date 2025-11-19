@@ -2241,34 +2241,199 @@ try:
 
         st.markdown("---")
 
+        # Custom cafe URLs section
+        st.markdown("### ☕ Add Custom Cafe/Restaurant Websites")
+        st.markdown("Scrape menus from individual cafe websites that aren't on Thuisbezorgd")
+
+        with st.expander("➕ Add Custom Cafe URLs", expanded=False):
+            st.markdown("""
+            **Supported Website Types:**
+            - ✅ Squarespace cafes (e.g., mickeybrowns.nl)
+            - ✅ WordPress restaurants
+            - ✅ Custom websites with menu pages
+            - ✅ Any site with structured menu data
+
+            **What Gets Scraped:**
+            - Menu item names
+            - Prices (if available)
+            - Categories
+            - Descriptions
+            """)
+
+            # Initialize session state for custom URLs
+            if 'custom_urls' not in st.session_state:
+                st.session_state.custom_urls = []
+
+            # Input for new URL
+            col1, col2, col3 = st.columns([3, 2, 1])
+
+            with col1:
+                new_url = st.text_input(
+                    "Website URL",
+                    placeholder="https://example.com/menu",
+                    key="new_cafe_url",
+                    help="Full URL to the cafe's menu page"
+                )
+
+            with col2:
+                new_name = st.text_input(
+                    "Cafe Name",
+                    placeholder="Mickey Browns",
+                    key="new_cafe_name",
+                    help="Name of the cafe/restaurant"
+                )
+
+            with col3:
+                st.markdown("&nbsp;")  # Spacing
+                if st.button("➕ Add", type="secondary"):
+                    if new_url and new_name:
+                        st.session_state.custom_urls.append({
+                            'url': new_url,
+                            'name': new_name
+                        })
+                        st.success(f"Added {new_name}!")
+                        st.rerun()
+                    else:
+                        st.error("Please enter both URL and name")
+
+            # Display added URLs
+            if st.session_state.custom_urls:
+                st.markdown("---")
+                st.markdown("#### 📋 Custom URLs to Scrape")
+
+                for idx, cafe in enumerate(st.session_state.custom_urls):
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        st.text(cafe['url'])
+                    with col2:
+                        st.text(cafe['name'])
+                    with col3:
+                        if st.button("❌", key=f"remove_cafe_{idx}"):
+                            st.session_state.custom_urls.pop(idx)
+                            st.rerun()
+
+                # Scrape custom URLs button
+                st.markdown("---")
+                if st.button("🚀 Scrape Custom Cafes", type="primary", key="scrape_custom"):
+                    st.session_state.scraping_in_progress = True
+
+                    progress_bar_custom = st.progress(0)
+                    status_text_custom = st.empty()
+
+                    try:
+                        status_text_custom.text("🚀 Starting custom cafe scraper...")
+                        manager = ScraperManager(headless=True)
+
+                        total_urls = len(st.session_state.custom_urls)
+
+                        for idx, cafe in enumerate(st.session_state.custom_urls):
+                            progress = (idx / total_urls) * 100
+                            progress_bar_custom.progress(progress / 100)
+                            status_text_custom.text(f"Scraping {cafe['name']} ({idx + 1}/{total_urls})...")
+
+                            result = manager.scrape_url(cafe['url'], restaurant_name=cafe['name'])
+
+                            if not result:
+                                st.warning(f"⚠️ Could not scrape {cafe['name']} - site structure may not be compatible")
+
+                        # Load existing data and merge
+                        try:
+                            with open('scraped_menus.json', 'r', encoding='utf-8') as f:
+                                existing_data = json.load(f)
+                        except FileNotFoundError:
+                            existing_data = []
+
+                        # Merge with existing data (avoid duplicates by URL)
+                        existing_urls = {r['url'] for r in existing_data}
+                        for restaurant in manager.data:
+                            if restaurant['url'] not in existing_urls:
+                                existing_data.append(restaurant)
+
+                        # Save combined data
+                        with open('scraped_menus.json', 'w', encoding='utf-8') as f:
+                            json.dump(existing_data, f, indent=2, ensure_ascii=False)
+
+                        manager.close_all()
+
+                        progress_bar_custom.progress(100)
+                        status_text_custom.text("✅ Complete!")
+
+                        st.success(f"""
+                        ✅ **Custom Cafe Scraping Complete!**
+
+                        - **Cafes scraped:** {len(manager.data)}
+                        - **Total items extracted:** {sum(r.get('total_items', 0) for r in manager.data)}
+                        - **Data merged with existing data**
+
+                        Go to Market Overview to see your cafe data alongside Thuisbezorgd restaurants!
+                        """)
+
+                        # Clear the URLs after successful scrape
+                        st.session_state.custom_urls = []
+
+                    except Exception as e:
+                        st.error(f"❌ **Error scraping custom cafes:**\n\n{str(e)}")
+
+                    finally:
+                        st.session_state.scraping_in_progress = False
+
+            else:
+                st.info("💡 Add cafe URLs above to start scraping individual websites")
+
+        st.markdown("---")
+
         st.markdown("#### ℹ️ About Data Collection")
 
         with st.expander("How does data collection work?"):
             st.markdown("""
-            **Data Sources:**
-            - **Thuisbezorgd.nl**: Popular food delivery platform in the Netherlands
+            **Multi-Source Data Collection:**
+
+            **1. Thuisbezorgd.nl Platform Scraping:**
             - Scrapes ALL restaurants in the selected city (not just a sample)
             - Uses intelligent scrolling to load all available restaurants
+            - Typically finds 100-300+ restaurants per city
+            - Automated restaurant type classification
 
-            **What data is collected:**
+            **2. Custom Cafe/Restaurant Websites:**
+            - **Squarespace Sites** - Specialized scraper for Squarespace-based cafes
+            - **WordPress Sites** - Generic scraper handles WordPress menus
+            - **Custom Sites** - Adaptive scraping for any menu structure
+            - **Examples**: mickeybrowns.nl, local cafe websites, independent restaurants
+
+            **What Data is Collected:**
             - Restaurant names and types (automatically classified)
             - Menu item names and descriptions
-            - Prices (cleaned and standardized)
-            - Categories (burgers, pizza, asian, etc.)
+            - Prices (cleaned and standardized to €)
+            - Categories (burgers, pizza, asian, drinks, etc.)
             - Price range classification (budget, moderate, premium, luxury)
 
+            **Intelligent Scraping Technology:**
+            - **Multiple scraper engines** - Thuisbezorgd, Squarespace, Generic
+            - **Automatic routing** - System picks the best scraper for each URL
+            - **Fallback strategies** - Multiple extraction methods per site
+            - **Pattern recognition** - Finds menu items even on unstructured sites
+            - **Text-based extraction** - Works even without structured HTML
+
             **Technical Details:**
-            - Uses Selenium WebDriver for reliable scraping
-            - Scrolls through infinite-scroll pages to find all restaurants
-            - Handles cookie popups and closed restaurant notices
-            - Extracts structured menu data with multiple fallback selectors
-            - Applies smart classification based on menu items and names
+            - Uses Selenium WebDriver for JavaScript-heavy sites
+            - Handles infinite-scroll pages automatically
+            - Cookie popup and overlay management
+            - Multiple CSS selector strategies
+            - Regular expression pattern matching for prices
+            - Smart category detection
 
             **Privacy & Ethics:**
             - Only publicly available pricing data is collected
             - No personal information is stored
             - Data is used for competitive analysis only
-            - Respects website structure and adds delays between requests
+            - Respects robots.txt and adds delays between requests
+            - No aggressive scraping or server overload
+
+            **Data Merging:**
+            - Thuisbezorgd data + Custom cafe data = Complete market view
+            - Duplicates automatically removed by URL
+            - All sources appear together in Market Overview
+            - Filter by type to see specific competitive sets
             """)
 
         with st.expander("Troubleshooting"):
