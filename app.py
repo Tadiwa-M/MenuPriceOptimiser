@@ -244,30 +244,46 @@ def load_data():
         data = json.load(f)
 
     total_restaurants = len(data)
-    
+
     # Convert to DataFrame
     rows = []
     for restaurant in data:
         restaurant_types = ', '.join(restaurant.get('restaurant_types', ['restaurant']))
         price_range = restaurant.get('price_range', 'unknown')
 
-        for item in restaurant['menu_items']:
+        for item in restaurant.get('menu_items', []):
+            # Skip items without valid prices
+            price = item.get('price')
+            if price is None or price == 0:
+                continue
+
             rows.append({
                 'restaurant': restaurant['restaurant_name'],
                 'restaurant_types': restaurant_types,
                 'price_range': price_range,
-                'item_name': item['name'],
-                'category': item['category'],
-                'price': item['price']
+                'item_name': item.get('name', 'Unknown'),
+                'category': item.get('category', 'Uncategorized'),
+                'price': price
             })
+
+    if not rows:
+        # Return empty DataFrame with correct columns if no data
+        df = pd.DataFrame(columns=['restaurant', 'restaurant_types', 'price_range', 'item_name', 'category', 'price'])
+        metadata = {
+            'total_in_file': total_restaurants,
+            'with_items': 0,
+            'with_valid_prices': 0,
+            'filtered_out': total_restaurants
+        }
+        return df, metadata
 
     df = pd.DataFrame(rows)
     restaurants_before_filter = df['restaurant'].nunique() if len(df) > 0 else 0
-    
-    # Filter out zero prices
+
+    # Filter out zero or negative prices (already filtered above, but double-check)
     df = df[df['price'] > 0]
     restaurants_after_filter = df['restaurant'].nunique() if len(df) > 0 else 0
-    
+
     # Calculate metadata
     metadata = {
         'total_in_file': total_restaurants,
@@ -275,7 +291,7 @@ def load_data():
         'with_valid_prices': restaurants_after_filter,
         'filtered_out': total_restaurants - restaurants_after_filter
     }
-    
+
     return df, metadata
 
 # Initialize Claude client
@@ -2132,6 +2148,14 @@ try:
                 disabled=True  # Only Thuisbezorgd for now
             )
 
+            # Debug mode option
+            debug_mode = st.checkbox(
+                "🐛 Debug Mode (Non-Headless)",
+                value=False,
+                key="debug_mode",
+                help="Run scraper with visible browser window - useful for troubleshooting. WARNING: Slower and requires display."
+            )
+
         with col2:
             st.markdown("#### 📊 Current Data Status")
 
@@ -2193,9 +2217,11 @@ try:
                     progress_bar.progress(progress)
                     status_text.text(message)
 
-                # Initialize scraper (headless mode for production)
-                status_text.text("🚀 Starting Selenium WebDriver...")
-                manager = ScraperManager(headless=True)
+                # Initialize scraper (headless mode unless debug enabled)
+                is_headless = not debug_mode
+                mode_text = "Debug Mode (Visible Browser)" if debug_mode else "Headless Mode"
+                status_text.text(f"🚀 Starting Selenium WebDriver ({mode_text})...")
+                manager = ScraperManager(headless=is_headless)
 
                 # Determine max_restaurants
                 max_rest = None if scrape_all else num_restaurants
@@ -2217,20 +2243,53 @@ try:
                 manager.close_all()
 
                 # Complete
-                progress_bar.progress(100)
+                progress_bar.progress(1.0)
                 status_text.text("✅ Complete!")
 
-                st.success(f"""
-                ✅ **Scraping Complete!**
+                # Check if any data was found
+                if len(data) == 0:
+                    st.error(f"""
+                    ⚠️ **Scraping Complete - But No Restaurants Found!**
 
-                - **Restaurants scraped:** {len(data)}
-                - **Total menu items:** {sum(r.get('total_items', 0) for r in data)}
-                - **Data saved to:** `scraped_menus.json`
+                    **Possible Causes:**
+                    1. **Thuisbezorgd changed their website** - Selectors may need updating
+                    2. **Bot detection** - Website may be blocking automated access
+                    3. **City name issue** - Try different spellings: "maastricht", "Maastricht"
+                    4. **Network/connection issues** - Check your internet connection
 
-                You can now view the data in the Market Overview and Competitor Analysis tabs!
-                """)
+                    **Next Steps:**
+                    1. Check the terminal/console for DEBUG messages
+                    2. Try running with a smaller limit (uncheck "Scrape ALL")
+                    3. Try scraping with headless=False to see what's happening
+                    4. Check if https://www.thuisbezorgd.nl/en/order-takeaway-{city} loads in your browser
 
-                st.session_state.scraping_complete = True
+                    **Alternative:**
+                    - Use the "Custom Cafe URLs" section below to add specific restaurant URLs manually
+                    """)
+
+                    # Add diagnostic info
+                    with st.expander("🔍 Diagnostic Information"):
+                        st.code(f"""
+City: {city}
+URL attempted: https://www.thuisbezorgd.nl/en/order-takeaway-{city.lower()}
+Restaurants found: 0
+Scraper mode: Headless
+
+Check the console/terminal where you ran 'streamlit run app.py'
+for detailed DEBUG messages about what happened.
+                        """)
+                else:
+                    st.success(f"""
+                    ✅ **Scraping Complete!**
+
+                    - **Restaurants scraped:** {len(data)}
+                    - **Total menu items:** {sum(r.get('total_items', 0) for r in data)}
+                    - **Data saved to:** `scraped_menus.json`
+
+                    You can now view the data in the Market Overview and Competitor Analysis tabs!
+                    """)
+
+                    st.session_state.scraping_complete = True
 
             except Exception as e:
                 st.error(f"❌ **Error during scraping:**\n\n{str(e)}")

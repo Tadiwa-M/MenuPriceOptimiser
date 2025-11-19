@@ -53,32 +53,55 @@ class ThuisbezorgdScraper(BaseScraper):
 
             print("   Scrolling to load all restaurants...")
 
+            # Debug: Check page content first
+            page_source = self.driver.page_source
+            print(f"   DEBUG: Page loaded, source length: {len(page_source)} chars")
+            print(f"   DEBUG: Page contains '/menu/': {'/menu/' in page_source}")
+            print(f"   DEBUG: Page title: {self.driver.title}")
+
             while True:
                 scroll_iteration += 1
 
                 # Scroll to bottom
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)  # Wait for content to load
+                time.sleep(3)  # Increased wait time for content to load
 
                 # Try multiple selectors for restaurant links
                 selectors = [
                     "a[href*='/menu/']",
                     "a[data-qa*='restaurant']",
-                    "[class*='restaurant'] a"
+                    "[class*='restaurant'] a",
+                    "a[href*='thuisbezorgd.nl/en/menu/']",  # More specific
+                    "[data-testid*='restaurant'] a"  # Common test ID pattern
                 ]
 
+                found_this_iteration = 0
                 for selector in selectors:
                     try:
                         elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        if scroll_iteration == 1 and elements:
+                            print(f"   DEBUG: Selector '{selector}' found {len(elements)} elements")
+
                         for element in elements:
-                            href = element.get_attribute('href')
-                            if href and '/menu/' in href and 'thuisbezorgd.nl' in href:
-                                restaurant_links.add(href)
-                    except:
+                            try:
+                                href = element.get_attribute('href')
+                                if href and '/menu/' in href and 'thuisbezorgd.nl' in href:
+                                    if href not in restaurant_links:
+                                        restaurant_links.add(href)
+                                        found_this_iteration += 1
+                            except:
+                                continue
+                    except Exception as e:
+                        if scroll_iteration == 1:
+                            print(f"   DEBUG: Selector '{selector}' error: {e}")
                         continue
 
                 current_count = len(restaurant_links)
-                print(f"   Scroll {scroll_iteration}: Found {current_count} restaurants", end="\r")
+
+                if scroll_iteration == 1:
+                    print(f"   First scroll complete: Found {current_count} restaurants")
+                else:
+                    print(f"   Scroll {scroll_iteration}: Found {current_count} restaurants (+{found_this_iteration} new)", end="\r")
 
                 # Check if we found new restaurants
                 if current_count == previous_count:
@@ -91,6 +114,12 @@ class ThuisbezorgdScraper(BaseScraper):
                     no_change_count = 0  # Reset counter if we found new restaurants
 
                 previous_count = current_count
+
+                # Early exit if stuck at 0
+                if scroll_iteration >= 5 and current_count == 0:
+                    print(f"\n   ⚠ No restaurants found after 5 scrolls - possible selector issue")
+                    print(f"   💡 Tip: Thuisbezorgd may have changed their website structure")
+                    break
 
                 # Safety limit to prevent infinite scrolling
                 if scroll_iteration >= 100:
