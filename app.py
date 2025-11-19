@@ -235,6 +235,8 @@ def load_data():
     with open('scraped_menus.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
 
+    total_restaurants = len(data)
+    
     # Convert to DataFrame
     rows = []
     for restaurant in data:
@@ -252,9 +254,21 @@ def load_data():
             })
 
     df = pd.DataFrame(rows)
+    restaurants_before_filter = df['restaurant'].nunique() if len(df) > 0 else 0
+    
     # Filter out zero prices
     df = df[df['price'] > 0]
-    return df
+    restaurants_after_filter = df['restaurant'].nunique() if len(df) > 0 else 0
+    
+    # Calculate metadata
+    metadata = {
+        'total_in_file': total_restaurants,
+        'with_items': restaurants_before_filter,
+        'with_valid_prices': restaurants_after_filter,
+        'filtered_out': total_restaurants - restaurants_after_filter
+    }
+    
+    return df, metadata
 
 # Initialize Claude client
 @st.cache_resource
@@ -313,7 +327,7 @@ st.markdown('<p class="sub-header">Data-driven pricing for cafes and restaurants
 
 # Load data
 try:
-    df = load_data()
+    df, metadata = load_data()
 
     # Better navigation with tabs instead of sidebar radio
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -327,6 +341,12 @@ try:
     with tab1:
         st.markdown("### 📊 Market Overview - Maastricht Restaurants")
         st.markdown("Get a comprehensive view of the competitive landscape in your market.")
+        
+        # Show data quality info if restaurants were filtered out
+        if metadata['filtered_out'] > 0:
+            st.info(f"ℹ️ **Data Note:** Showing {metadata['with_valid_prices']} of {metadata['total_in_file']} restaurants scraped. "
+                   f"{metadata['filtered_out']} restaurants were filtered out (no menu items or missing prices). "
+                   f"Re-run the scraper to collect more complete data.")
 
         with st.expander("ℹ️ How to use this tab"):
             st.markdown("""
