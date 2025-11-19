@@ -589,155 +589,1297 @@ try:
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
-        st.markdown("### 💵 Profit Margin Calculator")
-        st.markdown("Calculate your profit margins and compare with competitor pricing to optimize your menu.")
+        st.markdown("### 💵 Professional Profit Calculator")
+        st.markdown("Complete suite of financial tools for restaurant owners - from recipe costing to menu engineering.")
 
-        with st.expander("ℹ️ How to use this tab"):
+        with st.expander("ℹ️ Guide to Restaurant Profit Calculations"):
             st.markdown("""
-            **What you'll find here:**
-            - 📝 **Your Item Inputs**: Enter your item details (name, price, costs)
-            - 🔍 **Category Comparison**: Compare against competitor averages
-            - 💰 **Profit Analysis**: See margins and positioning vs market
-            - 📊 **Recommendations**: Get instant feedback on your pricing
-            - 🔮 **What-If Analysis**: See how price changes affect monthly profit
+            **Essential Metrics for Restaurant Success:**
 
-            **Tips:**
-            - Be accurate with ingredient costs for reliable margin calculations
-            - Compare with similar categories for relevant insights
-            - Use the what-if slider to model different sales volumes
-            - Watch for opportunities to increase prices while staying competitive
+            1. **Recipe Builder** 🧾
+               - Calculate exact ingredient costs
+               - Track multiple ingredients with units and quantities
+               - Get accurate portion costs for each menu item
+
+            2. **Food Cost Percentage** 📊
+               - Industry standard: 28-35% for restaurants
+               - Lower is better (more profit margin)
+               - Formula: (Ingredient Cost / Selling Price) × 100
+
+            3. **Menu Engineering** 🎯
+               - Analyze profitability vs. popularity
+               - Identify stars (high profit, high sales), plow horses, puzzles, and dogs
+               - Optimize your menu mix
+
+            4. **Break-Even Analysis** ⚖️
+               - Calculate how many units to sell to cover fixed costs
+               - Understand your minimum sales targets
+               - Plan for profitability
+
+            5. **Prime Cost** 💼
+               - Food Cost + Labor Cost
+               - Should be under 60% of revenue
+               - Key metric for restaurant health
+
+            6. **Target Pricing** 🎯
+               - Work backwards from desired profit margin
+               - See competitive positioning
+               - Find optimal price points
+
+            **Industry Benchmarks:**
+            - Food Cost: 28-35%
+            - Labor Cost: 25-35%
+            - Prime Cost: <60%
+            - Net Profit Margin: 10-15%
             """)
+
+        # Create calculator mode selector
+        calc_mode = st.radio(
+            "Select Calculator:",
+            ["🧾 Recipe Builder", "📊 Quick Profit Calculator", "🎯 Menu Engineering", "⚖️ Break-Even Analysis", "💼 Prime Cost Calculator", "🎯 Target Pricing"],
+            horizontal=True,
+            key="calc_mode"
+        )
 
         st.markdown("---")
 
-        col1, col2 = st.columns([1, 1])
+        # RECIPE BUILDER
+        if calc_mode == "🧾 Recipe Builder":
+            st.markdown("### 🧾 Recipe Builder & Cost Calculator")
+            st.markdown("Build your recipe with precise ingredient quantities and costs. Perfect for accurate portion costing.")
 
-        with col1:
-            st.markdown("#### 📝 Your Menu Item")
-            item_name = st.text_input(
-                "Item Name",
-                "Cappuccino",
-                key="calc_item",
-                help="Enter the name of your menu item"
-            )
-            your_price = st.number_input(
-                "Your Selling Price (€)",
-                min_value=0.0,
-                value=3.50,
-                step=0.10,
-                key="calc_price",
-                help="The price you charge customers"
-            )
-            ingredient_cost = st.number_input(
-                "Ingredient Cost (€)",
-                min_value=0.0,
-                value=0.80,
-                step=0.10,
-                key="calc_cost",
-                help="Total cost of ingredients per item"
-            )
-
-        with col2:
-            st.markdown("#### 🔍 Compare with Category")
-            compare_category = st.selectbox(
-                "Category",
-                sorted(df['category'].unique()),
-                key="calc_category",
-                help="Select a category to compare against competitor pricing"
-            )
-
-            competitor_items = df[df['category'] == compare_category]
-            if len(competitor_items) > 0:
-                avg_competitor_price = competitor_items['price'].mean()
-                min_competitor_price = competitor_items['price'].min()
-                max_competitor_price = competitor_items['price'].max()
-
-                st.metric("Competitor Average", f"€{avg_competitor_price:.2f}")
-                st.metric("Competitor Range", f"€{min_competitor_price:.2f} - €{max_competitor_price:.2f}")
-
-        # Calculate margins
-        if your_price > 0:
-            profit_per_item = your_price - ingredient_cost
-            margin_percentage = (profit_per_item / your_price) * 100
-
-            # Display results
-            st.markdown("---")
-            st.markdown("### 💰 Your Profit Analysis")
-
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2 = st.columns([2, 1])
 
             with col1:
-                st.metric("Profit per Item", f"€{profit_per_item:.2f}")
+                item_name = st.text_input(
+                    "Recipe Name",
+                    "Classic Burger",
+                    key="recipe_name",
+                    help="Name of your menu item"
+                )
+
+                servings = st.number_input(
+                    "Number of Servings",
+                    min_value=1,
+                    value=1,
+                    step=1,
+                    key="recipe_servings",
+                    help="How many servings does this recipe make?"
+                )
+
             with col2:
-                st.metric("Profit Margin", f"{margin_percentage:.1f}%")
+                st.markdown("#### 💡 Quick Tips")
+                st.info("""
+                - Enter all ingredients used
+                - Be precise with quantities
+                - Include packaging/garnish
+                - Update costs regularly
+                """)
+
+            st.markdown("---")
+            st.markdown("### 📝 Ingredients")
+
+            # Initialize session state for ingredients
+            if 'ingredients' not in st.session_state:
+                st.session_state.ingredients = [
+                    {"name": "Burger Patty (150g)", "quantity": 1.0, "unit": "piece", "cost_per_unit": 1.50},
+                    {"name": "Bun", "quantity": 1.0, "unit": "piece", "cost_per_unit": 0.40},
+                    {"name": "Lettuce", "quantity": 30.0, "unit": "g", "cost_per_unit": 0.01},
+                    {"name": "Tomato", "quantity": 50.0, "unit": "g", "cost_per_unit": 0.008},
+                    {"name": "Cheese Slice", "quantity": 1.0, "unit": "piece", "cost_per_unit": 0.30},
+                ]
+
+            # Display ingredients table
+            for idx, ingredient in enumerate(st.session_state.ingredients):
+                col1, col2, col3, col4, col5, col6 = st.columns([3, 1.5, 1, 1.5, 1.5, 0.5])
+
+                with col1:
+                    ingredient['name'] = st.text_input(
+                        "Ingredient",
+                        ingredient['name'],
+                        key=f"ing_name_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col2:
+                    ingredient['quantity'] = st.number_input(
+                        "Quantity",
+                        min_value=0.0,
+                        value=ingredient['quantity'],
+                        step=0.1,
+                        key=f"ing_qty_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col3:
+                    ingredient['unit'] = st.selectbox(
+                        "Unit",
+                        ["g", "kg", "ml", "L", "piece", "oz", "lb"],
+                        index=["g", "kg", "ml", "L", "piece", "oz", "lb"].index(ingredient['unit']),
+                        key=f"ing_unit_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col4:
+                    ingredient['cost_per_unit'] = st.number_input(
+                        "Cost/Unit (€)",
+                        min_value=0.0,
+                        value=ingredient['cost_per_unit'],
+                        step=0.01,
+                        format="%.3f",
+                        key=f"ing_cost_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col5:
+                    total_cost = ingredient['quantity'] * ingredient['cost_per_unit']
+                    st.metric(
+                        "Total",
+                        f"€{total_cost:.2f}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col6:
+                    if st.button("❌", key=f"remove_{idx}", help="Remove ingredient"):
+                        st.session_state.ingredients.pop(idx)
+                        st.rerun()
+
+            # Add ingredient button
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                if st.button("➕ Add Ingredient", type="secondary"):
+                    st.session_state.ingredients.append({
+                        "name": "New Ingredient",
+                        "quantity": 1.0,
+                        "unit": "piece",
+                        "cost_per_unit": 0.50
+                    })
+                    st.rerun()
+
+            # Calculate total recipe cost
+            total_recipe_cost = sum(ing['quantity'] * ing['cost_per_unit'] for ing in st.session_state.ingredients)
+            cost_per_serving = total_recipe_cost / servings
+
+            st.markdown("---")
+            st.markdown("### 💰 Recipe Cost Analysis")
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Recipe Cost", f"€{total_recipe_cost:.2f}")
+            with col2:
+                st.metric("Cost Per Serving", f"€{cost_per_serving:.2f}")
             with col3:
-                st.metric("Competitor Avg", f"€{avg_competitor_price:.2f}")
-            with col4:
-                price_diff = your_price - avg_competitor_price
-                st.metric("Price vs Market", f"€{price_diff:.2f}",
-                         delta=f"{((price_diff/avg_competitor_price)*100):.1f}%")
+                st.metric("Number of Servings", servings)
 
-            # Recommendations
             st.markdown("---")
-            st.markdown("### 📊 Pricing Recommendations")
+            st.markdown("### 💵 Pricing & Profitability")
 
-            if your_price < avg_competitor_price * 0.9:
-                st.success(f"✅ **You're priced competitively!** Your price is {((avg_competitor_price - your_price) / avg_competitor_price * 100):.1f}% below average.")
-                potential_increase = avg_competitor_price - your_price
-                st.info(f"💡 **Opportunity:** You could increase to €{avg_competitor_price:.2f} (competitor average) and add €{potential_increase:.2f} profit per sale.")
-            elif your_price > avg_competitor_price * 1.1:
-                st.warning(f"⚠️ **You're priced above market** ({((your_price - avg_competitor_price) / avg_competitor_price * 100):.1f}% higher). Consider adjusting to €{avg_competitor_price:.2f} (competitor average).")
-            else:
-                st.success(f"✅ **Perfect positioning!** You're right in the competitive range (within 10% of market average).")
+            col1, col2 = st.columns(2)
 
-            # What-if analysis
-            st.markdown("---")
-            st.markdown("### 🔮 What-If Analysis")
+            with col1:
+                selling_price = st.number_input(
+                    "Selling Price per Serving (€)",
+                    min_value=0.0,
+                    value=round(cost_per_serving * 3.2, 2),  # Default 30% food cost
+                    step=0.10,
+                    key="recipe_price"
+                )
 
-            monthly_sales = st.slider("Estimated monthly sales", 50, 500, 200, 10, key="calc_sales")
+                labor_cost_per_serving = st.number_input(
+                    "Labor Cost per Serving (€)",
+                    min_value=0.0,
+                    value=round(cost_per_serving * 0.5, 2),
+                    step=0.10,
+                    key="recipe_labor",
+                    help="Time to prepare × hourly wage / number of servings"
+                )
 
-            # Calculate scenarios
-            scenarios_data = []
+            if selling_price > 0:
+                profit_per_serving = selling_price - cost_per_serving - labor_cost_per_serving
+                food_cost_pct = (cost_per_serving / selling_price) * 100
+                labor_cost_pct = (labor_cost_per_serving / selling_price) * 100
+                prime_cost_pct = food_cost_pct + labor_cost_pct
+                profit_margin_pct = (profit_per_serving / selling_price) * 100
 
-            # Current scenario
-            scenarios_data.append({
-                'Scenario': '📍 Current Price',
-                'Price (€)': your_price,
-                'Profit/Item (€)': profit_per_item,
-                'Monthly Profit (€)': profit_per_item * monthly_sales,
-                'vs Competitor': 'Your current pricing'
-            })
+                with col2:
+                    st.markdown("#### 📊 Key Metrics")
 
-            # Match competitor average
-            if avg_competitor_price > 0:
-                new_profit = avg_competitor_price - ingredient_cost
-                diff = (new_profit * monthly_sales) - (profit_per_item * monthly_sales)
+                    # Food cost percentage with color coding
+                    if food_cost_pct <= 30:
+                        st.success(f"**Food Cost:** {food_cost_pct:.1f}% ✓ Excellent")
+                    elif food_cost_pct <= 35:
+                        st.info(f"**Food Cost:** {food_cost_pct:.1f}% → Good")
+                    else:
+                        st.warning(f"**Food Cost:** {food_cost_pct:.1f}% ⚠ High")
+
+                    # Prime cost
+                    if prime_cost_pct <= 60:
+                        st.success(f"**Prime Cost:** {prime_cost_pct:.1f}% ✓")
+                    else:
+                        st.warning(f"**Prime Cost:** {prime_cost_pct:.1f}% ⚠")
+
+                    st.metric("Profit Margin", f"{profit_margin_pct:.1f}%")
+
+                st.markdown("---")
+
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Food Cost", f"€{cost_per_serving:.2f}", f"{food_cost_pct:.1f}%")
+                with col2:
+                    st.metric("Labor Cost", f"€{labor_cost_per_serving:.2f}", f"{labor_cost_pct:.1f}%")
+                with col3:
+                    st.metric("Profit/Item", f"€{profit_per_serving:.2f}", f"{profit_margin_pct:.1f}%")
+                with col4:
+                    st.metric("Selling Price", f"€{selling_price:.2f}")
+
+                # Monthly projections
+                st.markdown("---")
+                st.markdown("### 📈 Monthly Projections")
+
+                monthly_sales = st.slider(
+                    "Estimated Monthly Sales",
+                    10, 1000, 200, 10,
+                    key="recipe_monthly_sales",
+                    help="How many units do you expect to sell per month?"
+                )
+
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Monthly Revenue", f"€{selling_price * monthly_sales:.2f}")
+                with col2:
+                    st.metric("Monthly Food Cost", f"€{cost_per_serving * monthly_sales:.2f}")
+                with col3:
+                    st.metric("Monthly Labor Cost", f"€{labor_cost_per_serving * monthly_sales:.2f}")
+                with col4:
+                    st.metric("Monthly Profit", f"€{profit_per_serving * monthly_sales:.2f}")
+
+        # QUICK PROFIT CALCULATOR
+        elif calc_mode == "📊 Quick Profit Calculator":
+            st.markdown("### 📊 Quick Profit Calculator")
+            st.markdown("Fast calculation for single items with market comparison.")
+
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                st.markdown("#### 📝 Your Menu Item")
+                item_name = st.text_input(
+                    "Item Name",
+                    "Cappuccino",
+                    key="quick_item",
+                    help="Enter the name of your menu item"
+                )
+                your_price = st.number_input(
+                    "Your Selling Price (€)",
+                    min_value=0.0,
+                    value=3.50,
+                    step=0.10,
+                    key="quick_price",
+                    help="The price you charge customers"
+                )
+                ingredient_cost = st.number_input(
+                    "Ingredient Cost (€)",
+                    min_value=0.0,
+                    value=0.80,
+                    step=0.10,
+                    key="quick_cost",
+                    help="Total cost of ingredients per item"
+                )
+
+            with col2:
+                st.markdown("#### 🔍 Compare with Category")
+                compare_category = st.selectbox(
+                    "Category",
+                    sorted(df['category'].unique()),
+                    key="quick_category",
+                    help="Select a category to compare against competitor pricing"
+                )
+
+                competitor_items = df[df['category'] == compare_category]
+                if len(competitor_items) > 0:
+                    avg_competitor_price = competitor_items['price'].mean()
+                    min_competitor_price = competitor_items['price'].min()
+                    max_competitor_price = competitor_items['price'].max()
+
+                    st.metric("Competitor Average", f"€{avg_competitor_price:.2f}")
+                    st.metric("Competitor Range", f"€{min_competitor_price:.2f} - €{max_competitor_price:.2f}")
+
+            # Calculate margins
+            if your_price > 0:
+                profit_per_item = your_price - ingredient_cost
+                margin_percentage = (profit_per_item / your_price) * 100
+                food_cost_pct = (ingredient_cost / your_price) * 100
+
+                # Display results
+                st.markdown("---")
+                st.markdown("### 💰 Your Profit Analysis")
+
+                col1, col2, col3, col4, col5 = st.columns(5)
+
+                with col1:
+                    st.metric("Profit per Item", f"€{profit_per_item:.2f}")
+                with col2:
+                    if food_cost_pct <= 30:
+                        st.metric("Food Cost %", f"{food_cost_pct:.1f}%", delta="✓ Excellent", delta_color="normal")
+                    elif food_cost_pct <= 35:
+                        st.metric("Food Cost %", f"{food_cost_pct:.1f}%", delta="Good", delta_color="normal")
+                    else:
+                        st.metric("Food Cost %", f"{food_cost_pct:.1f}%", delta="⚠ High", delta_color="inverse")
+                with col3:
+                    st.metric("Profit Margin", f"{margin_percentage:.1f}%")
+                with col4:
+                    st.metric("Competitor Avg", f"€{avg_competitor_price:.2f}")
+                with col5:
+                    price_diff = your_price - avg_competitor_price
+                    st.metric("Price vs Market", f"€{price_diff:.2f}",
+                             delta=f"{((price_diff/avg_competitor_price)*100):.1f}%")
+
+                # Recommendations
+                st.markdown("---")
+                st.markdown("### 📊 Pricing Recommendations")
+
+                if your_price < avg_competitor_price * 0.9:
+                    st.success(f"✅ **You're priced competitively!** Your price is {((avg_competitor_price - your_price) / avg_competitor_price * 100):.1f}% below average.")
+                    potential_increase = avg_competitor_price - your_price
+                    st.info(f"💡 **Opportunity:** You could increase to €{avg_competitor_price:.2f} (competitor average) and add €{potential_increase:.2f} profit per sale.")
+                elif your_price > avg_competitor_price * 1.1:
+                    st.warning(f"⚠️ **You're priced above market** ({((your_price - avg_competitor_price) / avg_competitor_price * 100):.1f}% higher). Consider adjusting to €{avg_competitor_price:.2f} (competitor average).")
+                else:
+                    st.success(f"✅ **Perfect positioning!** You're right in the competitive range (within 10% of market average).")
+
+                # What-if analysis
+                st.markdown("---")
+                st.markdown("### 🔮 What-If Analysis")
+
+                monthly_sales = st.slider("Estimated monthly sales", 50, 1000, 200, 10, key="quick_sales")
+
+                # Calculate scenarios
+                scenarios_data = []
+
+                # Current scenario
                 scenarios_data.append({
-                    'Scenario': '🎯 Match Market Avg',
-                    'Price (€)': avg_competitor_price,
-                    'Profit/Item (€)': new_profit,
-                    'Monthly Profit (€)': new_profit * monthly_sales,
-                    'vs Competitor': f"+€{diff:.2f}/month" if diff > 0 else f"€{diff:.2f}/month"
+                    'Scenario': '📍 Current Price',
+                    'Price (€)': your_price,
+                    'Profit/Item (€)': profit_per_item,
+                    'Monthly Profit (€)': profit_per_item * monthly_sales,
+                    'Food Cost %': food_cost_pct,
+                    'vs Competitor': 'Your current pricing'
                 })
 
-            # 10% increase
-            increased_price = your_price * 1.1
-            increased_profit = increased_price - ingredient_cost
-            diff_10 = (increased_profit * monthly_sales) - (profit_per_item * monthly_sales)
-            scenarios_data.append({
-                'Scenario': '📈 +10% Increase',
-                'Price (€)': increased_price,
-                'Profit/Item (€)': increased_profit,
-                'Monthly Profit (€)': increased_profit * monthly_sales,
-                'vs Competitor': f"+€{diff_10:.2f}/month"
-            })
+                # Match competitor average
+                if avg_competitor_price > 0:
+                    new_profit = avg_competitor_price - ingredient_cost
+                    diff = (new_profit * monthly_sales) - (profit_per_item * monthly_sales)
+                    new_food_cost = (ingredient_cost / avg_competitor_price) * 100
+                    scenarios_data.append({
+                        'Scenario': '🎯 Match Market Avg',
+                        'Price (€)': avg_competitor_price,
+                        'Profit/Item (€)': new_profit,
+                        'Monthly Profit (€)': new_profit * monthly_sales,
+                        'Food Cost %': new_food_cost,
+                        'vs Competitor': f"+€{diff:.2f}/month" if diff > 0 else f"€{diff:.2f}/month"
+                    })
 
-            scenarios_df = pd.DataFrame(scenarios_data)
-            scenarios_df['Price (€)'] = scenarios_df['Price (€)'].apply(lambda x: f"{x:.2f}")
-            scenarios_df['Profit/Item (€)'] = scenarios_df['Profit/Item (€)'].apply(lambda x: f"{x:.2f}")
-            scenarios_df['Monthly Profit (€)'] = scenarios_df['Monthly Profit (€)'].apply(lambda x: f"{x:.2f}")
+                # Optimal food cost (30%)
+                optimal_price = ingredient_cost / 0.30
+                optimal_profit = optimal_price - ingredient_cost
+                optimal_diff = (optimal_profit * monthly_sales) - (profit_per_item * monthly_sales)
+                scenarios_data.append({
+                    'Scenario': '🎯 30% Food Cost',
+                    'Price (€)': optimal_price,
+                    'Profit/Item (€)': optimal_profit,
+                    'Monthly Profit (€)': optimal_profit * monthly_sales,
+                    'Food Cost %': 30.0,
+                    'vs Competitor': f"+€{optimal_diff:.2f}/month" if optimal_diff > 0 else f"€{optimal_diff:.2f}/month"
+                })
 
-            st.dataframe(scenarios_df, use_container_width=True, hide_index=True)
+                scenarios_df = pd.DataFrame(scenarios_data)
+                scenarios_df['Price (€)'] = scenarios_df['Price (€)'].apply(lambda x: f"{x:.2f}")
+                scenarios_df['Profit/Item (€)'] = scenarios_df['Profit/Item (€)'].apply(lambda x: f"{x:.2f}")
+                scenarios_df['Monthly Profit (€)'] = scenarios_df['Monthly Profit (€)'].apply(lambda x: f"{x:.2f}")
+                scenarios_df['Food Cost %'] = scenarios_df['Food Cost %'].apply(lambda x: f"{x:.1f}%")
+
+                st.dataframe(scenarios_df, use_container_width=True, hide_index=True)
+
+        # MENU ENGINEERING
+        elif calc_mode == "🎯 Menu Engineering":
+            st.markdown("### 🎯 Menu Engineering Matrix")
+            st.markdown("Analyze your menu items by profitability and popularity. Identify your Stars, Plow Horses, Puzzles, and Dogs.")
+
+            with st.expander("📚 Understanding Menu Engineering"):
+                st.markdown("""
+                **The Four Categories:**
+
+                1. **⭐ STARS** (High Profit, High Popularity)
+                   - Your best performers!
+                   - Feature prominently on menu
+                   - Maintain quality and consistency
+                   - Consider slight price increases
+
+                2. **🐴 PLOW HORSES** (Low Profit, High Popularity)
+                   - Popular but not profitable
+                   - Try to increase price slightly
+                   - Reduce portion size
+                   - Lower ingredient costs
+
+                3. **🧩 PUZZLES** (High Profit, Low Popularity)
+                   - Profitable but not selling well
+                   - Improve menu description
+                   - Reposition on menu
+                   - Train staff to upsell
+                   - Consider renaming
+
+                4. **🐕 DOGS** (Low Profit, Low Popularity)
+                   - Consider removing from menu
+                   - Taking up valuable menu space
+                   - May confuse customers
+                   - Replace with potential stars
+                """)
+
+            st.markdown("#### 📝 Enter Your Menu Items")
+            st.markdown("Add at least 4-5 items for meaningful analysis")
+
+            # Initialize session state for menu items
+            if 'menu_items' not in st.session_state:
+                st.session_state.menu_items = [
+                    {"name": "Classic Burger", "price": 12.50, "cost": 3.80, "monthly_sales": 180},
+                    {"name": "Margherita Pizza", "price": 9.50, "cost": 2.50, "monthly_sales": 240},
+                    {"name": "Caesar Salad", "price": 8.50, "cost": 3.20, "monthly_sales": 95},
+                    {"name": "Truffle Pasta", "price": 16.50, "cost": 4.50, "monthly_sales": 65},
+                    {"name": "House Sandwich", "price": 7.50, "cost": 2.80, "monthly_sales": 145},
+                ]
+
+            # Display menu items table
+            for idx, item in enumerate(st.session_state.menu_items):
+                col1, col2, col3, col4, col5, col6 = st.columns([3, 1.5, 1.5, 1.5, 1.5, 0.5])
+
+                with col1:
+                    item['name'] = st.text_input(
+                        "Item Name",
+                        item['name'],
+                        key=f"menu_name_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col2:
+                    item['price'] = st.number_input(
+                        "Price (€)",
+                        min_value=0.0,
+                        value=item['price'],
+                        step=0.10,
+                        key=f"menu_price_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col3:
+                    item['cost'] = st.number_input(
+                        "Cost (€)",
+                        min_value=0.0,
+                        value=item['cost'],
+                        step=0.10,
+                        key=f"menu_cost_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col4:
+                    item['monthly_sales'] = st.number_input(
+                        "Monthly Sales",
+                        min_value=0,
+                        value=item['monthly_sales'],
+                        step=10,
+                        key=f"menu_sales_{idx}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col5:
+                    profit = item['price'] - item['cost']
+                    st.metric(
+                        "Profit",
+                        f"€{profit:.2f}",
+                        label_visibility="collapsed" if idx > 0 else "visible"
+                    )
+                with col6:
+                    if st.button("❌", key=f"menu_remove_{idx}", help="Remove item"):
+                        st.session_state.menu_items.pop(idx)
+                        st.rerun()
+
+            # Add item button
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                if st.button("➕ Add Menu Item", type="secondary"):
+                    st.session_state.menu_items.append({
+                        "name": "New Item",
+                        "price": 10.0,
+                        "cost": 3.0,
+                        "monthly_sales": 100
+                    })
+                    st.rerun()
+
+            if len(st.session_state.menu_items) >= 3:
+                st.markdown("---")
+                st.markdown("### 📊 Menu Engineering Analysis")
+
+                # Calculate metrics for each item
+                menu_df = pd.DataFrame(st.session_state.menu_items)
+                menu_df['profit_per_item'] = menu_df['price'] - menu_df['cost']
+                menu_df['total_profit'] = menu_df['profit_per_item'] * menu_df['monthly_sales']
+                menu_df['food_cost_pct'] = (menu_df['cost'] / menu_df['price']) * 100
+
+                # Calculate averages
+                avg_profit = menu_df['profit_per_item'].mean()
+                avg_sales = menu_df['monthly_sales'].mean()
+
+                # Classify items
+                def classify_item(row):
+                    high_profit = row['profit_per_item'] >= avg_profit
+                    high_sales = row['monthly_sales'] >= avg_sales
+
+                    if high_profit and high_sales:
+                        return "⭐ Star"
+                    elif high_profit and not high_sales:
+                        return "🧩 Puzzle"
+                    elif not high_profit and high_sales:
+                        return "🐴 Plow Horse"
+                    else:
+                        return "🐕 Dog"
+
+                menu_df['category'] = menu_df.apply(classify_item, axis=1)
+
+                # Display summary metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    stars = len(menu_df[menu_df['category'] == "⭐ Star"])
+                    st.metric("⭐ Stars", stars)
+                with col2:
+                    puzzles = len(menu_df[menu_df['category'] == "🧩 Puzzle"])
+                    st.metric("🧩 Puzzles", puzzles)
+                with col3:
+                    plow_horses = len(menu_df[menu_df['category'] == "🐴 Plow Horse"])
+                    st.metric("🐴 Plow Horses", plow_horses)
+                with col4:
+                    dogs = len(menu_df[menu_df['category'] == "🐕 Dog"])
+                    st.metric("🐕 Dogs", dogs)
+
+                # Display classified items
+                st.markdown("---")
+                display_df = menu_df[['name', 'price', 'profit_per_item', 'monthly_sales', 'total_profit', 'food_cost_pct', 'category']].copy()
+                display_df.columns = ['Item', 'Price (€)', 'Profit/Item (€)', 'Monthly Sales', 'Monthly Profit (€)', 'Food Cost %', 'Classification']
+                display_df['Price (€)'] = display_df['Price (€)'].apply(lambda x: f"€{x:.2f}")
+                display_df['Profit/Item (€)'] = display_df['Profit/Item (€)'].apply(lambda x: f"€{x:.2f}")
+                display_df['Monthly Profit (€)'] = display_df['Monthly Profit (€)'].apply(lambda x: f"€{x:.2f}")
+                display_df['Food Cost %'] = display_df['Food Cost %'].apply(lambda x: f"{x:.1f}%")
+
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                # Scatter plot
+                st.markdown("---")
+                st.markdown("### 📈 Visual Menu Engineering Matrix")
+
+                fig = px.scatter(
+                    menu_df,
+                    x='monthly_sales',
+                    y='profit_per_item',
+                    size='total_profit',
+                    color='category',
+                    text='name',
+                    title='Menu Engineering Matrix',
+                    labels={
+                        'monthly_sales': 'Monthly Sales (Popularity) →',
+                        'profit_per_item': 'Profit per Item (€) →'
+                    },
+                    color_discrete_map={
+                        "⭐ Star": "#FFD700",
+                        "🧩 Puzzle": "#9370DB",
+                        "🐴 Plow Horse": "#CD853F",
+                        "🐕 Dog": "#808080"
+                    }
+                )
+
+                # Add average lines
+                fig.add_hline(y=avg_profit, line_dash="dash", line_color="gray", annotation_text="Avg Profit")
+                fig.add_vline(x=avg_sales, line_dash="dash", line_color="gray", annotation_text="Avg Sales")
+
+                fig.update_traces(textposition='top center')
+                fig.update_layout(height=500)
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Recommendations
+                st.markdown("---")
+                st.markdown("### 💡 Recommendations")
+
+                for _, row in menu_df.iterrows():
+                    if row['category'] == "⭐ Star":
+                        st.success(f"**{row['name']}** - Keep doing what you're doing! Consider featuring more prominently.")
+                    elif row['category'] == "🧩 Puzzle":
+                        st.info(f"**{row['name']}** - Profitable but low sales. Improve menu placement or description. Train staff to recommend it.")
+                    elif row['category'] == "🐴 Plow Horse":
+                        st.warning(f"**{row['name']}** - Popular but low profit margin ({row['food_cost_pct']:.1f}% food cost). Try small price increase or reduce costs.")
+                    elif row['category'] == "🐕 Dog":
+                        st.error(f"**{row['name']}** - Consider removing from menu. Low profit and low popularity.")
+
+        # BREAK-EVEN ANALYSIS
+        elif calc_mode == "⚖️ Break-Even Analysis":
+            st.markdown("### ⚖️ Break-Even Analysis")
+            st.markdown("Calculate how many units you need to sell to cover your fixed costs and start making profit.")
+
+            with st.expander("💡 Understanding Break-Even"):
+                st.markdown("""
+                **Break-Even Point** = Fixed Costs ÷ (Selling Price - Variable Cost per Unit)
+
+                **Fixed Costs:** Expenses that don't change with sales volume
+                - Rent, insurance, salaries, utilities, etc.
+
+                **Variable Costs:** Expenses that change with each unit sold
+                - Ingredients, packaging, delivery fees
+
+                **Contribution Margin:** Selling Price - Variable Cost
+                - The amount each sale contributes to covering fixed costs
+                """)
+
+            st.markdown("---")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("#### 💰 Fixed Costs (Monthly)")
+
+                rent = st.number_input(
+                    "Rent (€)",
+                    min_value=0.0,
+                    value=2500.0,
+                    step=100.0,
+                    key="be_rent"
+                )
+                salaries = st.number_input(
+                    "Salaries (€)",
+                    min_value=0.0,
+                    value=6000.0,
+                    step=100.0,
+                    key="be_salaries"
+                )
+                utilities = st.number_input(
+                    "Utilities (€)",
+                    min_value=0.0,
+                    value=500.0,
+                    step=50.0,
+                    key="be_utilities"
+                )
+                insurance = st.number_input(
+                    "Insurance (€)",
+                    min_value=0.0,
+                    value=300.0,
+                    step=50.0,
+                    key="be_insurance"
+                )
+                other_fixed = st.number_input(
+                    "Other Fixed Costs (€)",
+                    min_value=0.0,
+                    value=700.0,
+                    step=50.0,
+                    key="be_other"
+                )
+
+                total_fixed_costs = rent + salaries + utilities + insurance + other_fixed
+
+                st.markdown("---")
+                st.metric("**Total Fixed Costs**", f"€{total_fixed_costs:,.2f}", help="Monthly fixed costs")
+
+            with col2:
+                st.markdown("#### 📦 Per-Unit Information")
+
+                selling_price_unit = st.number_input(
+                    "Average Selling Price (€)",
+                    min_value=0.0,
+                    value=12.50,
+                    step=0.50,
+                    key="be_price",
+                    help="Average price per menu item"
+                )
+
+                variable_cost_unit = st.number_input(
+                    "Variable Cost per Unit (€)",
+                    min_value=0.0,
+                    value=4.50,
+                    step=0.50,
+                    key="be_variable",
+                    help="Ingredient + packaging cost per item"
+                )
+
+                contribution_margin = selling_price_unit - variable_cost_unit
+
+                if selling_price_unit > 0:
+                    contribution_margin_pct = (contribution_margin / selling_price_unit) * 100
+                else:
+                    contribution_margin_pct = 0
+
+                st.markdown("---")
+                st.metric("**Contribution Margin**", f"€{contribution_margin:.2f}",
+                         help="How much each sale contributes to fixed costs")
+                st.metric("**Contribution Margin %**", f"{contribution_margin_pct:.1f}%")
+
+            if contribution_margin > 0:
+                st.markdown("---")
+                st.markdown("### 📊 Break-Even Analysis Results")
+
+                break_even_units = total_fixed_costs / contribution_margin
+                break_even_revenue = break_even_units * selling_price_unit
+                daily_break_even = break_even_units / 30  # Assuming 30 days/month
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Break-Even Units (Monthly)", f"{break_even_units:,.0f}",
+                             help="Units needed to cover all fixed costs")
+                with col2:
+                    st.metric("Break-Even Revenue", f"€{break_even_revenue:,.2f}",
+                             help="Revenue needed to break even")
+                with col3:
+                    st.metric("Daily Sales Needed", f"{daily_break_even:,.0f}",
+                             help="Average units per day to break even")
+
+                st.markdown("---")
+                st.markdown("### 📈 Profit Scenarios")
+
+                # Create profit scenarios
+                scenarios = []
+                for units in [int(break_even_units * 0.5), int(break_even_units * 0.75),
+                             int(break_even_units), int(break_even_units * 1.25),
+                             int(break_even_units * 1.5)]:
+                    revenue = units * selling_price_unit
+                    total_variable_costs = units * variable_cost_unit
+                    profit = revenue - total_variable_costs - total_fixed_costs
+                    profit_margin = (profit / revenue * 100) if revenue > 0 else 0
+
+                    scenarios.append({
+                        'Monthly Sales': units,
+                        'Revenue (€)': revenue,
+                        'Variable Costs (€)': total_variable_costs,
+                        'Fixed Costs (€)': total_fixed_costs,
+                        'Profit (€)': profit,
+                        'Profit Margin %': profit_margin
+                    })
+
+                scenarios_df = pd.DataFrame(scenarios)
+                scenarios_df['Monthly Sales'] = scenarios_df['Monthly Sales'].apply(lambda x: f"{x:,}")
+                scenarios_df['Revenue (€)'] = scenarios_df['Revenue (€)'].apply(lambda x: f"€{x:,.2f}")
+                scenarios_df['Variable Costs (€)'] = scenarios_df['Variable Costs (€)'].apply(lambda x: f"€{x:,.2f}")
+                scenarios_df['Fixed Costs (€)'] = scenarios_df['Fixed Costs (€)'].apply(lambda x: f"€{x:,.2f}")
+                scenarios_df['Profit (€)'] = scenarios_df['Profit (€)'].apply(lambda x: f"€{x:,.2f}")
+                scenarios_df['Profit Margin %'] = scenarios_df['Profit Margin %'].apply(lambda x: f"{x:.1f}%")
+
+                st.dataframe(scenarios_df, use_container_width=True, hide_index=True)
+
+                # Visualization
+                st.markdown("---")
+                units_range = range(0, int(break_even_units * 2), max(1, int(break_even_units / 20)))
+                revenues = [u * selling_price_unit for u in units_range]
+                total_costs = [total_fixed_costs + (u * variable_cost_unit) for u in units_range]
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=list(units_range), y=revenues, mode='lines', name='Revenue', line=dict(color='green')))
+                fig.add_trace(go.Scatter(x=list(units_range), y=total_costs, mode='lines', name='Total Cost', line=dict(color='red')))
+                fig.add_vline(x=break_even_units, line_dash="dash", line_color="blue", annotation_text="Break-Even Point")
+
+                fig.update_layout(
+                    title="Break-Even Chart",
+                    xaxis_title="Units Sold",
+                    yaxis_title="Amount (€)",
+                    hovermode='x unified',
+                    height=400
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+            else:
+                st.error("⚠️ Contribution margin must be positive. Your selling price needs to be higher than variable costs.")
+
+        # PRIME COST CALCULATOR
+        elif calc_mode == "💼 Prime Cost Calculator":
+            st.markdown("### 💼 Prime Cost Calculator")
+            st.markdown("Calculate your Prime Cost (Food Cost + Labor Cost) - the most important metric for restaurant profitability.")
+
+            with st.expander("💡 Understanding Prime Cost"):
+                st.markdown("""
+                **Prime Cost = Food Cost + Labor Cost**
+
+                This is the single most important metric in restaurant management.
+
+                **Industry Benchmarks:**
+                - **Prime Cost should be < 60% of revenue**
+                - Food Cost: 28-35%
+                - Labor Cost: 25-35%
+                - Total Prime Cost: 53-70% (target: <60%)
+
+                **Why It Matters:**
+                - If Prime Cost > 60%, you're leaving little room for other expenses and profit
+                - These are your two largest controllable costs
+                - Monitoring Prime Cost weekly helps catch problems early
+
+                **How to Improve:**
+                - Reduce food waste
+                - Negotiate better supplier prices
+                - Optimize staff scheduling
+                - Cross-train employees
+                - Review menu pricing regularly
+                """)
+
+            st.markdown("---")
+
+            # Time period selector
+            period = st.radio(
+                "Calculate for:",
+                ["Weekly", "Monthly", "Quarterly"],
+                horizontal=True,
+                key="prime_period"
+            )
+
+            period_multiplier = {"Weekly": 1, "Monthly": 4.33, "Quarterly": 13}[period]
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("#### 🍽️ Food Costs")
+
+                beginning_inventory = st.number_input(
+                    f"Beginning Inventory (€)",
+                    min_value=0.0,
+                    value=3500.0,
+                    step=100.0,
+                    key="pc_begin_inv"
+                )
+
+                purchases = st.number_input(
+                    f"Purchases (€)",
+                    min_value=0.0,
+                    value=8500.0 if period == "Monthly" else 1962.0,
+                    step=100.0,
+                    key="pc_purchases"
+                )
+
+                ending_inventory = st.number_input(
+                    f"Ending Inventory (€)",
+                    min_value=0.0,
+                    value=3200.0,
+                    step=100.0,
+                    key="pc_end_inv"
+                )
+
+                food_cost = beginning_inventory + purchases - ending_inventory
+
+                st.markdown("---")
+                st.metric(f"**Total Food Cost ({period})**", f"€{food_cost:,.2f}")
+
+            with col2:
+                st.markdown("#### 👥 Labor Costs")
+
+                wages = st.number_input(
+                    f"Wages & Salaries (€)",
+                    min_value=0.0,
+                    value=6000.0 if period == "Monthly" else 1385.0,
+                    step=100.0,
+                    key="pc_wages"
+                )
+
+                benefits = st.number_input(
+                    f"Benefits & Taxes (€)",
+                    min_value=0.0,
+                    value=1200.0 if period == "Monthly" else 277.0,
+                    step=50.0,
+                    key="pc_benefits",
+                    help="Include payroll taxes, insurance, etc."
+                )
+
+                labor_cost = wages + benefits
+
+                st.markdown("---")
+                st.metric(f"**Total Labor Cost ({period})**", f"€{labor_cost:,.2f}")
+
+            # Revenue input
+            st.markdown("---")
+            st.markdown("#### 💰 Revenue")
+
+            revenue = st.number_input(
+                f"Total Revenue ({period}) (€)",
+                min_value=0.0,
+                value=25000.0 if period == "Monthly" else 5769.0,
+                step=100.0,
+                key="pc_revenue"
+            )
+
+            if revenue > 0:
+                # Calculate percentages
+                food_cost_pct = (food_cost / revenue) * 100
+                labor_cost_pct = (labor_cost / revenue) * 100
+                prime_cost = food_cost + labor_cost
+                prime_cost_pct = (prime_cost / revenue) * 100
+
+                remaining_for_ops = revenue - prime_cost
+                remaining_for_ops_pct = (remaining_for_ops / revenue) * 100
+
+                st.markdown("---")
+                st.markdown("### 📊 Prime Cost Analysis")
+
+                # Main metrics
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    if food_cost_pct <= 30:
+                        st.metric("Food Cost", f"€{food_cost:,.2f}", f"{food_cost_pct:.1f}% ✓", delta_color="normal")
+                    elif food_cost_pct <= 35:
+                        st.metric("Food Cost", f"€{food_cost:,.2f}", f"{food_cost_pct:.1f}%", delta_color="normal")
+                    else:
+                        st.metric("Food Cost", f"€{food_cost:,.2f}", f"{food_cost_pct:.1f}% ⚠", delta_color="inverse")
+
+                with col2:
+                    if labor_cost_pct <= 30:
+                        st.metric("Labor Cost", f"€{labor_cost:,.2f}", f"{labor_cost_pct:.1f}% ✓", delta_color="normal")
+                    elif labor_cost_pct <= 35:
+                        st.metric("Labor Cost", f"€{labor_cost:,.2f}", f"{labor_cost_pct:.1f}%", delta_color="normal")
+                    else:
+                        st.metric("Labor Cost", f"€{labor_cost:,.2f}", f"{labor_cost_pct:.1f}% ⚠", delta_color="inverse")
+
+                with col3:
+                    if prime_cost_pct <= 60:
+                        st.metric("Prime Cost", f"€{prime_cost:,.2f}", f"{prime_cost_pct:.1f}% ✓ Excellent", delta_color="normal")
+                    elif prime_cost_pct <= 65:
+                        st.metric("Prime Cost", f"€{prime_cost:,.2f}", f"{prime_cost_pct:.1f}% → Good", delta_color="normal")
+                    else:
+                        st.metric("Prime Cost", f"€{prime_cost:,.2f}", f"{prime_cost_pct:.1f}% ⚠ High", delta_color="inverse")
+
+                with col4:
+                    st.metric("Remaining for Ops", f"€{remaining_for_ops:,.2f}", f"{remaining_for_ops_pct:.1f}%")
+
+                # Visual breakdown
+                st.markdown("---")
+                st.markdown("### 📊 Cost Breakdown")
+
+                breakdown_data = pd.DataFrame({
+                    'Category': ['Food Cost', 'Labor Cost', 'Remaining for Operations & Profit'],
+                    'Amount': [food_cost, labor_cost, remaining_for_ops],
+                    'Percentage': [food_cost_pct, labor_cost_pct, remaining_for_ops_pct]
+                })
+
+                fig = px.pie(
+                    breakdown_data,
+                    values='Amount',
+                    names='Category',
+                    title=f'{period} Cost Breakdown',
+                    hole=0.4,
+                    color_discrete_sequence=['#FF6B6B', '#4ECDC4', '#45B7D1']
+                )
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Recommendations
+                st.markdown("---")
+                st.markdown("### 💡 Recommendations")
+
+                if prime_cost_pct <= 60:
+                    st.success(f"✅ **Excellent!** Your prime cost of {prime_cost_pct:.1f}% is in the optimal range. You have €{remaining_for_ops:,.2f} ({remaining_for_ops_pct:.1f}%) remaining for other expenses and profit.")
+                elif prime_cost_pct <= 65:
+                    st.info(f"ℹ️ **Good!** Your prime cost of {prime_cost_pct:.1f}% is acceptable but has room for improvement. Target: <60%")
+
+                    # Specific recommendations
+                    if food_cost_pct > 35:
+                        st.warning(f"**Food Cost Action Item:** Your food cost ({food_cost_pct:.1f}%) is above target. Review portion sizes, reduce waste, and negotiate with suppliers.")
+                    if labor_cost_pct > 35:
+                        st.warning(f"**Labor Cost Action Item:** Your labor cost ({labor_cost_pct:.1f}%) is above target. Optimize scheduling and cross-train staff.")
+                else:
+                    st.error(f"⚠️ **Action Needed!** Your prime cost of {prime_cost_pct:.1f}% is too high. You need to reduce by {prime_cost_pct - 60:.1f} percentage points.")
+
+                    reduction_needed = revenue * ((prime_cost_pct - 60) / 100)
+                    st.error(f"**Target:** Reduce prime cost by €{reduction_needed:,.2f} to reach 60%")
+
+                    # Breakdown of issues
+                    issues = []
+                    if food_cost_pct > 35:
+                        issues.append(f"🍽️ Food cost is {food_cost_pct - 35:.1f}pp above target")
+                    if labor_cost_pct > 35:
+                        issues.append(f"👥 Labor cost is {labor_cost_pct - 35:.1f}pp above target")
+
+                    if issues:
+                        st.markdown("**Specific Issues:**")
+                        for issue in issues:
+                            st.markdown(f"- {issue}")
+
+                # Trend tracking suggestion
+                st.markdown("---")
+                with st.expander("📈 Track Your Prime Cost Over Time"):
+                    st.markdown("""
+                    **Best Practice:** Calculate Prime Cost weekly
+
+                    **Weekly Tracking Template:**
+                    1. Count inventory every Monday
+                    2. Record all purchases
+                    3. Track labor hours daily
+                    4. Calculate Prime Cost each Sunday
+                    5. Compare week-over-week
+
+                    **Red Flags:**
+                    - Prime Cost increases >2% week-over-week
+                    - Food Cost spikes (check for waste/theft)
+                    - Labor Cost rises (check scheduling)
+
+                    **Pro Tip:** Use a spreadsheet to track trends and catch problems early!
+                    """)
+
+        # TARGET PRICING
+        elif calc_mode == "🎯 Target Pricing":
+            st.markdown("### 🎯 Target Pricing Calculator")
+            st.markdown("Work backwards from your desired profit margin to find the optimal selling price.")
+
+            with st.expander("💡 Understanding Target Pricing"):
+                st.markdown("""
+                **Three Pricing Strategies:**
+
+                1. **Cost-Plus Pricing**
+                   - Start with your costs
+                   - Add desired markup (e.g., 3x ingredient cost)
+                   - Simple but may ignore market conditions
+
+                2. **Target Profit Margin**
+                   - Decide on desired profit margin %
+                   - Calculate price needed to achieve it
+                   - Balances profitability with market awareness
+
+                3. **Competitive Pricing**
+                   - Match or beat competitor prices
+                   - Check profitability afterwards
+                   - Good for market penetration
+
+                **Recommended Food Cost Percentages:**
+                - Fine Dining: 25-30%
+                - Casual Dining: 28-32%
+                - Fast Casual: 30-33%
+                - QSR/Fast Food: 30-35%
+                - Cafes/Coffee: 20-25%
+                - Bars (food): 25-30%
+                """)
+
+            st.markdown("---")
+
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                st.markdown("#### 📝 Item Details")
+
+                target_item_name = st.text_input(
+                    "Item Name",
+                    "Signature Burger",
+                    key="target_name"
+                )
+
+                total_cost = st.number_input(
+                    "Total Cost per Item (€)",
+                    min_value=0.0,
+                    value=3.50,
+                    step=0.10,
+                    key="target_cost",
+                    help="Include all ingredients and packaging"
+                )
+
+            with col2:
+                st.markdown("#### 🎯 Your Restaurant Type")
+                restaurant_type = st.selectbox(
+                    "Type",
+                    ["Fine Dining (25-30%)", "Casual Dining (28-32%)", "Fast Casual (30-33%)", "QSR/Fast Food (30-35%)", "Cafe/Coffee Shop (20-25%)", "Custom"],
+                    key="target_type"
+                )
+
+            st.markdown("---")
+            st.markdown("### 💰 Pricing Strategies")
+
+            # Strategy tabs
+            strategy_tab1, strategy_tab2, strategy_tab3 = st.tabs([
+                "🎯 Target Food Cost %",
+                "💵 Cost Multiplier",
+                "📊 Competitive Comparison"
+            ])
+
+            with strategy_tab1:
+                st.markdown("#### Calculate Price Based on Desired Food Cost %")
+
+                if "Custom" in restaurant_type:
+                    target_food_cost_pct = st.slider(
+                        "Target Food Cost Percentage",
+                        15.0, 40.0, 30.0, 0.5,
+                        key="custom_food_cost",
+                        help="What % of the selling price should be food cost?"
+                    )
+                else:
+                    # Extract range from selection
+                    ranges = {
+                        "Fine Dining (25-30%)": (25, 30),
+                        "Casual Dining (28-32%)": (28, 32),
+                        "Fast Casual (30-33%)": (30, 33),
+                        "QSR/Fast Food (30-35%)": (30, 35),
+                        "Cafe/Coffee Shop (20-25%)": (20, 25)
+                    }
+                    low, high = ranges[restaurant_type]
+                    target_food_cost_pct = st.slider(
+                        "Target Food Cost Percentage",
+                        float(low), float(high), float((low + high) / 2), 0.5,
+                        key="target_food_cost_pct",
+                        help=f"Recommended range for {restaurant_type.split(' (')[0]}"
+                    )
+
+                # Calculate required price
+                required_price = total_cost / (target_food_cost_pct / 100)
+                profit_per_item = required_price - total_cost
+                profit_margin = (profit_per_item / required_price) * 100
+
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Required Selling Price", f"€{required_price:.2f}")
+                with col2:
+                    st.metric("Profit per Item", f"€{profit_per_item:.2f}")
+                with col3:
+                    st.metric("Profit Margin", f"{profit_margin:.1f}%")
+                with col4:
+                    st.metric("Food Cost %", f"{target_food_cost_pct:.1f}%")
+
+                # Monthly projections
+                st.markdown("---")
+                monthly_sales_target = st.slider(
+                    "Expected Monthly Sales",
+                    50, 1000, 200, 10,
+                    key="target_monthly"
+                )
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Monthly Revenue", f"€{required_price * monthly_sales_target:,.2f}")
+                with col2:
+                    st.metric("Monthly Food Cost", f"€{total_cost * monthly_sales_target:,.2f}")
+                with col3:
+                    st.metric("Monthly Gross Profit", f"€{profit_per_item * monthly_sales_target:,.2f}")
+
+                # Compare different food cost %
+                st.markdown("---")
+                st.markdown("#### Compare Different Food Cost Targets")
+
+                scenarios = []
+                for fc_pct in [25, 28, 30, 32, 35]:
+                    price = total_cost / (fc_pct / 100)
+                    profit = price - total_cost
+                    scenarios.append({
+                        'Food Cost %': f"{fc_pct}%",
+                        'Selling Price': f"€{price:.2f}",
+                        'Profit/Item': f"€{profit:.2f}",
+                        'Monthly Profit': f"€{profit * monthly_sales_target:,.2f}",
+                        'Markup': f"{((price / total_cost) - 1) * 100:.0f}%"
+                    })
+
+                st.dataframe(pd.DataFrame(scenarios), use_container_width=True, hide_index=True)
+
+            with strategy_tab2:
+                st.markdown("#### Calculate Price Based on Cost Multiplier")
+                st.markdown("Common markup strategies: 2x = 50% food cost, 3x = 33% food cost, 4x = 25% food cost")
+
+                multiplier = st.slider(
+                    "Cost Multiplier",
+                    1.5, 5.0, 3.0, 0.1,
+                    key="multiplier",
+                    help="How many times cost should the price be?"
+                )
+
+                mult_price = total_cost * multiplier
+                mult_profit = mult_price - total_cost
+                mult_food_cost_pct = (total_cost / mult_price) * 100
+                mult_profit_margin = (mult_profit / mult_price) * 100
+
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Selling Price", f"€{mult_price:.2f}")
+                with col2:
+                    st.metric("Profit per Item", f"€{mult_profit:.2f}")
+                with col3:
+                    st.metric("Food Cost %", f"{mult_food_cost_pct:.1f}%")
+                with col4:
+                    st.metric("Profit Margin", f"{mult_profit_margin:.1f}%")
+
+                # Common multipliers
+                st.markdown("---")
+                st.markdown("#### Common Industry Multipliers")
+
+                multipliers_data = []
+                for mult in [2.0, 2.5, 3.0, 3.5, 4.0]:
+                    price = total_cost * mult
+                    profit = price - total_cost
+                    fc_pct = (total_cost / price) * 100
+                    multipliers_data.append({
+                        'Multiplier': f"{mult}x",
+                        'Price': f"€{price:.2f}",
+                        'Profit/Item': f"€{profit:.2f}",
+                        'Food Cost %': f"{fc_pct:.1f}%",
+                        'Monthly Profit': f"€{profit * monthly_sales_target:,.2f}"
+                    })
+
+                st.dataframe(pd.DataFrame(multipliers_data), use_container_width=True, hide_index=True)
+
+            with strategy_tab3:
+                st.markdown("#### Compare with Competitor Prices")
+
+                compare_category_target = st.selectbox(
+                    "Category",
+                    sorted(df['category'].unique()),
+                    key="target_category",
+                    help="Select a category to compare pricing"
+                )
+
+                competitor_items_target = df[df['category'] == compare_category_target]
+                if len(competitor_items_target) > 0:
+                    comp_avg = competitor_items_target['price'].mean()
+                    comp_min = competitor_items_target['price'].min()
+                    comp_max = competitor_items_target['price'].max()
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Market Average", f"€{comp_avg:.2f}")
+                    with col2:
+                        st.metric("Market Range", f"€{comp_min:.2f} - €{comp_max:.2f}")
+                    with col3:
+                        num_competitors = len(competitor_items_target)
+                        st.metric("Competitors", num_competitors)
+
+                    # Calculate profitability at different price points
+                    st.markdown("---")
+                    st.markdown("#### Profitability at Different Price Points")
+
+                    comp_scenarios = []
+
+                    price_points = [
+                        ("Match Lowest", comp_min),
+                        ("10% Below Avg", comp_avg * 0.9),
+                        ("Match Average", comp_avg),
+                        ("10% Above Avg", comp_avg * 1.1),
+                        ("Match Highest", comp_max)
+                    ]
+
+                    for label, price in price_points:
+                        if price > 0:
+                            profit = price - total_cost
+                            fc_pct = (total_cost / price) * 100
+                            margin = (profit / price) * 100
+                            monthly_profit = profit * monthly_sales_target
+
+                            comp_scenarios.append({
+                                'Strategy': label,
+                                'Price': f"€{price:.2f}",
+                                'Profit/Item': f"€{profit:.2f}",
+                                'Food Cost %': f"{fc_pct:.1f}%",
+                                'Margin %': f"{margin:.1f}%",
+                                'Monthly Profit': f"€{monthly_profit:,.2f}"
+                            })
+
+                    st.dataframe(pd.DataFrame(comp_scenarios), use_container_width=True, hide_index=True)
+
+                    # Recommendation
+                    st.markdown("---")
+                    st.markdown("#### 💡 Recommendation")
+
+                    # Calculate ideal price (30% food cost)
+                    ideal_price = total_cost / 0.30
+
+                    if ideal_price <= comp_avg:
+                        st.success(f"✅ **Great opportunity!** Your ideal price (€{ideal_price:.2f} at 30% food cost) is below market average (€{comp_avg:.2f}). You can be competitive and profitable.")
+                    elif ideal_price <= comp_avg * 1.1:
+                        st.info(f"ℹ️ **Good positioning.** Your ideal price (€{ideal_price:.2f}) is slightly above average but within competitive range.")
+                    else:
+                        st.warning(f"⚠️ **High cost item.** Your ideal price (€{ideal_price:.2f}) is significantly above market average (€{comp_avg:.2f}). Consider reducing costs or emphasizing premium value.")
+
+                else:
+                    st.info("Select a category to see competitor pricing data.")
 
     with tab4:
         st.markdown("### 🤖 AI-Powered Pricing Recommendations")
