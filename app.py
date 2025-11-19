@@ -10,6 +10,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import anthropic
 import os
+import sys
+from pathlib import Path
+
+# Add scrapers to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Import scraper manager
+from scraper_manager import ScraperManager
 
 # Page config
 st.set_page_config(
@@ -340,26 +348,34 @@ try:
 
     with tab1:
         st.markdown("### 📊 Market Overview - Maastricht Restaurants")
-        st.markdown("Get a comprehensive view of the competitive landscape in your market.")
-        
+        st.markdown("Complete view of **ALL** restaurants on Thuisbezorgd in Maastricht region. Get comprehensive competitive intelligence from the entire market.")
+
+        # Show data scope info
+        st.success(f"✅ **Data Scope:** Showing all {metadata['with_valid_prices']} restaurants from Thuisbezorgd Maastricht with complete menu pricing data.")
+
         # Show data quality info if restaurants were filtered out
         if metadata['filtered_out'] > 0:
-            st.info(f"ℹ️ **Data Note:** Showing {metadata['with_valid_prices']} of {metadata['total_in_file']} restaurants scraped. "
-                   f"{metadata['filtered_out']} restaurants were filtered out (no menu items or missing prices). "
-                   f"Re-run the scraper to collect more complete data.")
+            st.info(f"ℹ️ **Data Quality Note:** {metadata['filtered_out']} additional restaurants were found but filtered out due to incomplete data (no menu items or missing prices). "
+                   f"Total restaurants discovered: {metadata['total_in_file']}. Use the Data Collection tab to re-scrape for the most current data.")
 
         with st.expander("ℹ️ How to use this tab"):
             st.markdown("""
             **What you'll find here:**
-            - 📊 **Key Metrics**: Overview of restaurants, items, and price ranges
+            - 📊 **Key Metrics**: Overview of ALL restaurants, items, and price ranges in Maastricht
             - 🏷️ **Category Grid**: Visual overview of all menu categories with average prices
             - 📈 **Charts**: Price distribution, restaurant comparisons, and market insights
             - 🔍 **Filters**: Narrow down by restaurant type and price range
+
+            **Data Collection:**
+            - Use the **🔄 Data Collection** tab to scrape all restaurants from Thuisbezorgd
+            - No command line needed - everything works in-app!
+            - Choose to scrape ALL restaurants (recommended) or set a custom limit
 
             **Tips:**
             - Click on category cards to see which categories have the highest prices
             - Use filters to focus on specific restaurant types or price ranges
             - Check the price distribution to see where your items fit in the market
+            - Refresh data regularly using the Data Collection tab to stay current
             """)
 
         st.markdown("---")
@@ -810,7 +826,7 @@ try:
 
     with tab5:
         st.markdown("### 🔄 Data Collection")
-        st.markdown("Collect competitor pricing data from Maastricht restaurants. All inputs are managed here - no command line needed!")
+        st.markdown("Collect competitor pricing data from restaurants. All scraping happens in-app - no command line needed!")
 
         st.markdown("---")
 
@@ -826,21 +842,31 @@ try:
                 help="City to collect restaurant data from"
             )
 
-            num_restaurants = st.number_input(
-                "Number of Restaurants",
-                min_value=1,
-                max_value=50,
-                value=10,
-                step=1,
-                key="scraper_count",
-                help="How many restaurants to scrape data from"
+            scrape_all = st.checkbox(
+                "Scrape ALL restaurants (recommended)",
+                value=True,
+                key="scrape_all",
+                help="Scrape all available restaurants in the city. Uncheck to set a custom limit."
             )
+
+            num_restaurants = None
+            if not scrape_all:
+                num_restaurants = st.number_input(
+                    "Number of Restaurants",
+                    min_value=1,
+                    max_value=500,
+                    value=50,
+                    step=10,
+                    key="scraper_count",
+                    help="How many restaurants to scrape data from"
+                )
 
             scraper_type = st.selectbox(
                 "Data Source",
-                ["Thuisbezorgd.nl", "Generic Websites", "Both"],
+                ["Thuisbezorgd.nl"],
                 key="scraper_type",
-                help="Choose which sources to collect data from"
+                help="Choose which sources to collect data from",
+                disabled=True  # Only Thuisbezorgd for now
             )
 
         with col2:
@@ -852,6 +878,13 @@ try:
                     st.metric("Restaurants", len(current_data))
                     total_items = sum(len(r.get('menu_items', [])) for r in current_data)
                     st.metric("Menu Items", total_items)
+
+                    # Get last update time
+                    if current_data:
+                        import datetime
+                        last_update = current_data[0].get('scraped_at', 'Unknown')
+                        st.caption(f"Last updated: {last_update[:16]}")
+
                     st.success("✅ Data loaded")
             except FileNotFoundError:
                 st.warning("⚠️ No data yet")
@@ -861,23 +894,87 @@ try:
 
         st.markdown("#### 🚀 Start Data Collection")
 
-        if st.button("🔄 Start Collection", type="primary", key="start_scraper"):
-            st.info("🔄 Data collection feature coming soon!")
-            st.markdown("""
-            **For now, please use the command line:**
+        # Initialize session state for scraping status
+        if 'scraping_in_progress' not in st.session_state:
+            st.session_state.scraping_in_progress = False
+        if 'scraping_complete' not in st.session_state:
+            st.session_state.scraping_complete = False
 
-            ```bash
-            python scraper.py
-            ```
+        col_btn1, col_btn2 = st.columns([1, 3])
 
-            This will collect competitor pricing data and save it to `scraped_menus.json`.
+        with col_btn1:
+            start_button = st.button(
+                "🔄 Start Collection",
+                type="primary",
+                key="start_scraper",
+                disabled=st.session_state.scraping_in_progress
+            )
 
-            **Note:** This feature will be fully integrated in the next update, allowing you to:
-            - ✅ Configure scraping parameters from the UI
-            - ✅ Monitor progress in real-time
-            - ✅ View collection logs
-            - ✅ Refresh data with one click
-            """)
+        with col_btn2:
+            if st.session_state.scraping_in_progress:
+                st.warning("⏳ Scraping in progress... This may take several minutes.")
+
+        if start_button:
+            st.session_state.scraping_in_progress = True
+            st.session_state.scraping_complete = False
+
+            # Create progress containers
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            info_box = st.info("🔍 Initializing scraper...")
+
+            try:
+                # Progress callback for UI updates
+                def update_progress(current, total, message):
+                    progress = current / total if total > 0 else 0
+                    progress_bar.progress(progress)
+                    status_text.text(message)
+
+                # Initialize scraper (headless mode for production)
+                status_text.text("🚀 Starting Selenium WebDriver...")
+                manager = ScraperManager(headless=True)
+
+                # Determine max_restaurants
+                max_rest = None if scrape_all else num_restaurants
+
+                # Start scraping
+                info_box.info(f"🔍 Discovering restaurants in {city}...")
+                data = manager.discover_and_scrape_thuisbezorgd(
+                    city=city.lower(),
+                    max_restaurants=max_rest,
+                    progress_callback=update_progress
+                )
+
+                # Save data
+                status_text.text("💾 Saving data...")
+                manager.save_to_json('scraped_menus.json')
+                manager.save_to_csv('scraped_menus.csv')
+
+                # Cleanup
+                manager.close_all()
+
+                # Complete
+                progress_bar.progress(100)
+                status_text.text("✅ Complete!")
+
+                st.success(f"""
+                ✅ **Scraping Complete!**
+
+                - **Restaurants scraped:** {len(data)}
+                - **Total menu items:** {sum(r.get('total_items', 0) for r in data)}
+                - **Data saved to:** `scraped_menus.json`
+
+                You can now view the data in the Market Overview and Competitor Analysis tabs!
+                """)
+
+                st.session_state.scraping_complete = True
+
+            except Exception as e:
+                st.error(f"❌ **Error during scraping:**\n\n{str(e)}")
+                st.info("💡 Try running the scraper from command line for detailed logs: `python scraper_new.py`")
+
+            finally:
+                st.session_state.scraping_in_progress = False
 
         st.markdown("---")
 
@@ -887,32 +984,87 @@ try:
             st.markdown("""
             **Data Sources:**
             - **Thuisbezorgd.nl**: Popular food delivery platform in the Netherlands
-            - **Generic Websites**: Direct restaurant websites using AI-powered scraping
+            - Scrapes ALL restaurants in the selected city (not just a sample)
+            - Uses intelligent scrolling to load all available restaurants
 
             **What data is collected:**
-            - Restaurant names and types
+            - Restaurant names and types (automatically classified)
             - Menu item names and descriptions
-            - Prices
-            - Categories (automatically classified)
+            - Prices (cleaned and standardized)
+            - Categories (burgers, pizza, asian, etc.)
+            - Price range classification (budget, moderate, premium, luxury)
+
+            **Technical Details:**
+            - Uses Selenium WebDriver for reliable scraping
+            - Scrolls through infinite-scroll pages to find all restaurants
+            - Handles cookie popups and closed restaurant notices
+            - Extracts structured menu data with multiple fallback selectors
+            - Applies smart classification based on menu items and names
 
             **Privacy & Ethics:**
             - Only publicly available pricing data is collected
             - No personal information is stored
             - Data is used for competitive analysis only
+            - Respects website structure and adds delays between requests
             """)
 
         with st.expander("Troubleshooting"):
             st.markdown("""
             **Common Issues:**
 
-            1. **No data found**: Run `python scraper.py` from command line
-            2. **Old data**: Re-run scraper to refresh
-            3. **Missing restaurants**: Increase the number of restaurants to scrape
+            1. **Scraping takes too long**:
+               - Scraping ALL restaurants can take 30+ minutes
+               - Uncheck "Scrape ALL restaurants" to set a limit
+               - Each restaurant takes ~5-10 seconds to scrape
+
+            2. **No data found**:
+               - Check if the city name is correct (e.g., "maastricht", "amsterdam")
+               - Try running from command line: `python scraper_new.py`
+
+            3. **Chrome/Selenium errors**:
+               - Ensure Chrome/Chromium is installed
+               - Check that chromedriver is compatible with your Chrome version
+
+            4. **Incomplete data**:
+               - Some restaurants may be closed or have restricted menus
+               - The scraper automatically skips failed restaurants
 
             **File Locations:**
-            - Data: `scraped_menus.json`
+            - Data (JSON): `scraped_menus.json`
+            - Data (CSV): `scraped_menus.csv`
             - Scrapers: `scrapers/` directory
+            - Main scraper: `scraper_manager.py`
+
+            **Performance Tips:**
+            - Use headless mode (enabled by default in-app)
+            - Start with a smaller limit (~20 restaurants) to test
+            - Run during off-peak hours for faster scraping
             """)
+
+        # Show recent scraping logs if available
+        if st.session_state.scraping_complete:
+            with st.expander("📋 View Scraped Data Summary"):
+                try:
+                    with open('scraped_menus.json', 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+
+                    st.write(f"**Total Restaurants:** {len(data)}")
+
+                    # Create summary table
+                    summary_data = []
+                    for restaurant in data:
+                        summary_data.append({
+                            'Restaurant': restaurant['restaurant_name'],
+                            'Items': restaurant['total_items'],
+                            'Types': ', '.join(restaurant.get('restaurant_types', [])),
+                            'Price Range': restaurant.get('price_range', 'unknown')
+                        })
+
+                    df_summary = pd.DataFrame(summary_data)
+                    st.dataframe(df_summary, use_container_width=True)
+
+                except Exception as e:
+                    st.error(f"Could not load summary: {e}")
 
 except FileNotFoundError:
     st.error("❌ No data found! Please use the Data Collection tab to gather competitor data.")
