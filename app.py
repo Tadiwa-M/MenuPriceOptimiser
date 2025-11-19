@@ -424,8 +424,11 @@ try:
 
         st.markdown("---")
 
-        # Restaurant type and price range filters
-        col1, col2 = st.columns(2)
+        # Restaurant type and price range filters with better UX
+        st.markdown("### 🔍 Filter Market Data")
+        st.markdown("Filter the competitive landscape to focus on your restaurant type and price segment")
+
+        col1, col2, col3 = st.columns(3)
         with col1:
             # Restaurant types filter
             all_types = set()
@@ -434,23 +437,34 @@ try:
             all_types = sorted(list(all_types))
 
             selected_type = st.selectbox(
-                "Filter by Restaurant Type",
-                ['All'] + all_types,
-                key="overview_type_filter"
+                "🍽️ Restaurant Type",
+                ['All Types'] + all_types,
+                key="overview_type_filter",
+                help="Filter to see only specific restaurant types (e.g., Asian, Pizza, Burgers)"
             )
 
         with col2:
             # Price range filter
             price_ranges = ['All'] + sorted(df['price_range'].unique().tolist())
             selected_price_range = st.selectbox(
-                "Filter by Price Range",
+                "💰 Price Range",
                 price_ranges,
-                key="overview_price_filter"
+                key="overview_price_filter",
+                help="Filter by price segment (budget, moderate, premium, luxury)"
             )
+
+        with col3:
+            # Show filtering stats
+            if selected_type != 'All Types' or selected_price_range != 'All':
+                st.markdown("#### Active Filters")
+                if selected_type != 'All Types':
+                    st.success(f"✓ {selected_type}")
+                if selected_price_range != 'All':
+                    st.success(f"✓ {selected_price_range}")
 
         # Apply filters
         filtered_overview_df = df.copy()
-        if selected_type != 'All':
+        if selected_type != 'All Types':
             filtered_overview_df = filtered_overview_df[
                 filtered_overview_df['restaurant_types'].str.contains(selected_type, case=False, na=False)
             ]
@@ -460,8 +474,115 @@ try:
             ]
 
         if len(filtered_overview_df) == 0:
-            st.warning("No restaurants match the selected filters")
+            st.warning(f"⚠️ No restaurants match your filters ({selected_type}, {selected_price_range}). Showing all data instead.")
             filtered_overview_df = df  # Fallback to show all data
+        else:
+            # Show filtered stats
+            filtered_restaurants = filtered_overview_df['restaurant'].nunique()
+            total_restaurants = df['restaurant'].nunique()
+            if selected_type != 'All Types' or selected_price_range != 'All':
+                st.info(f"📊 Showing **{filtered_restaurants}** of **{total_restaurants}** restaurants matching your filters")
+
+        # Show restaurant type breakdown
+        st.markdown("---")
+        st.markdown("### 📊 Restaurant Type Breakdown")
+        st.markdown("See the competitive landscape by restaurant type in your market")
+
+        # Calculate restaurant type stats
+        type_breakdown = []
+        for types_str in df['restaurant_types'].unique():
+            for rtype in types_str.split(','):
+                rtype = rtype.strip()
+                type_df = df[df['restaurant_types'].str.contains(rtype, case=False, na=False)]
+                type_restaurants = type_df['restaurant'].nunique()
+                type_items = len(type_df)
+                type_avg_price = type_df['price'].mean()
+                type_breakdown.append({
+                    'Type': rtype.title(),
+                    'Restaurants': type_restaurants,
+                    'Menu Items': type_items,
+                    'Avg Price': type_avg_price
+                })
+
+        # Remove duplicates and sort
+        type_breakdown_df = pd.DataFrame(type_breakdown).drop_duplicates('Type').sort_values('Restaurants', ascending=False)
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Bar chart of restaurant types
+            fig = px.bar(
+                type_breakdown_df,
+                x='Type',
+                y='Restaurants',
+                title='Number of Restaurants by Type in Maastricht',
+                labels={'Restaurants': 'Number of Restaurants', 'Type': 'Restaurant Type'},
+                color='Avg Price',
+                color_continuous_scale='RdYlGn_r',
+                text='Restaurants'
+            )
+            fig.update_traces(textposition='outside')
+            fig.update_layout(showlegend=True, height=400, xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.markdown("#### 🎯 Your Competitive Set")
+            st.markdown("Filter by your restaurant type to see:")
+            st.markdown("- **Number of competitors**")
+            st.markdown("- **Average pricing**")
+            st.markdown("- **Popular menu items**")
+            st.markdown("- **Price positioning**")
+
+            st.markdown("---")
+            st.markdown("**Example: Asian Restaurants**")
+            asian_df = df[df['restaurant_types'].str.contains('asian', case=False, na=False)]
+            if len(asian_df) > 0:
+                asian_restaurants = asian_df['restaurant'].nunique()
+                asian_avg = asian_df['price'].mean()
+                st.metric("Asian Restaurants", asian_restaurants)
+                st.metric("Avg Price", f"€{asian_avg:.2f}")
+            else:
+                st.info("Select restaurant type to see competitive insights")
+
+        # Show all restaurants table
+        st.markdown("---")
+        st.markdown("### 🏪 All Restaurants in Dataset")
+        st.markdown("Complete list of restaurants with pricing data")
+
+        # Create restaurant summary
+        restaurant_summary = df.groupby('restaurant').agg({
+            'item_name': 'count',
+            'price': ['mean', 'min', 'max'],
+            'restaurant_types': 'first',
+            'price_range': 'first'
+        }).reset_index()
+
+        restaurant_summary.columns = ['Restaurant', 'Menu Items', 'Avg Price', 'Min Price', 'Max Price', 'Types', 'Price Range']
+        restaurant_summary = restaurant_summary.sort_values('Restaurant')
+
+        # Format pricing columns
+        restaurant_summary['Avg Price'] = restaurant_summary['Avg Price'].apply(lambda x: f"€{x:.2f}")
+        restaurant_summary['Min Price'] = restaurant_summary['Min Price'].apply(lambda x: f"€{x:.2f}")
+        restaurant_summary['Max Price'] = restaurant_summary['Max Price'].apply(lambda x: f"€{x:.2f}")
+
+        # Display table
+        st.dataframe(
+            restaurant_summary,
+            use_container_width=True,
+            hide_index=True,
+            height=min(len(restaurant_summary) * 40 + 50, 400)  # Dynamic height, max 400px
+        )
+
+        # Data quality insights
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📍 Total Restaurants", len(restaurant_summary))
+        with col2:
+            total_items = df['item_name'].count()
+            st.metric("📋 Total Menu Items", total_items)
+        with col3:
+            avg_items_per_restaurant = total_items / len(restaurant_summary)
+            st.metric("📊 Avg Items/Restaurant", f"{avg_items_per_restaurant:.0f}")
 
         st.markdown("---")
 
