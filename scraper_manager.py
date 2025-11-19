@@ -96,9 +96,11 @@ class ScraperManager:
 
         return self.data
 
-    def discover_and_scrape_thuisbezorgd(self, city='maastricht', max_restaurants=50):
+    def discover_and_scrape_thuisbezorgd(self, city='maastricht', max_restaurants=None, progress_callback=None):
         """
         Discover all restaurants in a city on Thuisbezorgd and scrape them
+        Set max_restaurants=None to scrape ALL restaurants (default)
+        progress_callback: optional function(current, total, message) for UI updates
         """
         print(f"\n{'='*60}")
         print(f"🔍 DISCOVERING & SCRAPING THUISBEZORGD - {city.upper()}")
@@ -107,6 +109,9 @@ class ScraperManager:
         thuisbezorgd = self.scrapers['thuisbezorgd']
 
         # Discover restaurants
+        if progress_callback:
+            progress_callback(0, 100, f"Discovering restaurants in {city.title()}...")
+
         restaurant_urls = thuisbezorgd.discover_restaurants(city=city, max_restaurants=max_restaurants)
 
         if not restaurant_urls:
@@ -116,10 +121,19 @@ class ScraperManager:
         print(f"\n📋 Found {len(restaurant_urls)} restaurants to scrape")
         print(f"{'='*60}\n")
 
+        if progress_callback:
+            progress_callback(10, 100, f"Found {len(restaurant_urls)} restaurants. Starting scraping...")
+
         # Scrape each restaurant
         import time
         for i, url in enumerate(restaurant_urls, 1):
             print(f"\n[{i}/{len(restaurant_urls)}] Scraping...")
+
+            if progress_callback:
+                # Progress from 10% to 90% during scraping
+                progress_pct = 10 + int((i / len(restaurant_urls)) * 80)
+                progress_callback(progress_pct, 100, f"Scraping restaurant {i}/{len(restaurant_urls)}...")
+
             result = thuisbezorgd.scrape_restaurant(url)
 
             if result:
@@ -129,9 +143,15 @@ class ScraperManager:
             if i < len(restaurant_urls):
                 time.sleep(2)
 
+        if progress_callback:
+            progress_callback(90, 100, "Saving data...")
+
         print(f"\n{'='*60}")
         print(f"✅ Discovery complete! Scraped {len(self.data)} restaurants from {city}")
         print(f"{'='*60}")
+
+        if progress_callback:
+            progress_callback(100, 100, f"Complete! Scraped {len(self.data)} restaurants")
 
         return self.data
 

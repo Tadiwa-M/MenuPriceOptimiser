@@ -19,15 +19,20 @@ class ThuisbezorgdScraper(BaseScraper):
         """Check if URL is from Thuisbezorgd"""
         return 'thuisbezorgd.nl' in url.lower()
 
-    def discover_restaurants(self, city='maastricht', max_restaurants=50):
+    def discover_restaurants(self, city='maastricht', max_restaurants=None):
         """
         Discover restaurants in a city from Thuisbezorgd
         Returns list of restaurant URLs
+        Set max_restaurants=None to get ALL restaurants (default)
         """
         if not self.driver:
             self.start_driver()
 
         print(f"\n🔍 Discovering restaurants in {city.title()}...")
+        if max_restaurants:
+            print(f"   Limiting to {max_restaurants} restaurants")
+        else:
+            print(f"   Scraping ALL restaurants (no limit)")
 
         try:
             # Navigate to city page
@@ -39,33 +44,67 @@ class ThuisbezorgdScraper(BaseScraper):
             self.handle_cookie_popup()
             time.sleep(2)
 
-            # Scroll to load more restaurants
-            for i in range(5):  # Scroll 5 times to load more
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)
-
-            # Find all restaurant links
+            # Scroll to load ALL restaurants
+            # Keep scrolling until no new restaurants are found
             restaurant_links = set()
+            previous_count = 0
+            no_change_count = 0
+            scroll_iteration = 0
 
-            # Try multiple selectors for restaurant links
-            selectors = [
-                "a[href*='/menu/']",
-                "a[data-qa*='restaurant']",
-                "[class*='restaurant'] a"
-            ]
+            print("   Scrolling to load all restaurants...")
 
-            for selector in selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for element in elements:
-                        href = element.get_attribute('href')
-                        if href and '/menu/' in href and 'thuisbezorgd.nl' in href:
-                            restaurant_links.add(href)
-                except:
-                    continue
+            while True:
+                scroll_iteration += 1
 
-            restaurant_urls = list(restaurant_links)[:max_restaurants]
-            print(f"✓ Found {len(restaurant_urls)} restaurants")
+                # Scroll to bottom
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)  # Wait for content to load
+
+                # Try multiple selectors for restaurant links
+                selectors = [
+                    "a[href*='/menu/']",
+                    "a[data-qa*='restaurant']",
+                    "[class*='restaurant'] a"
+                ]
+
+                for selector in selectors:
+                    try:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        for element in elements:
+                            href = element.get_attribute('href')
+                            if href and '/menu/' in href and 'thuisbezorgd.nl' in href:
+                                restaurant_links.add(href)
+                    except:
+                        continue
+
+                current_count = len(restaurant_links)
+                print(f"   Scroll {scroll_iteration}: Found {current_count} restaurants", end="\r")
+
+                # Check if we found new restaurants
+                if current_count == previous_count:
+                    no_change_count += 1
+                    # If no new restaurants found after 3 scrolls, we're done
+                    if no_change_count >= 3:
+                        print(f"\n   ✓ Reached end of results after {scroll_iteration} scrolls")
+                        break
+                else:
+                    no_change_count = 0  # Reset counter if we found new restaurants
+
+                previous_count = current_count
+
+                # Safety limit to prevent infinite scrolling
+                if scroll_iteration >= 100:
+                    print(f"\n   ⚠ Reached safety limit of 100 scrolls")
+                    break
+
+            # Convert to list and apply limit if specified
+            restaurant_urls = list(restaurant_links)
+
+            if max_restaurants:
+                restaurant_urls = restaurant_urls[:max_restaurants]
+                print(f"\n✓ Found {len(restaurant_urls)} restaurants (limited to {max_restaurants})")
+            else:
+                print(f"\n✓ Found {len(restaurant_urls)} restaurants (ALL)")
 
             return restaurant_urls
 
